@@ -1,0 +1,309 @@
+// Package youtube provides a client for the YouTube Data API v3.
+package youtube
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"time"
+
+	"feedmix/pkg/oauth"
+)
+
+// Client is a YouTube Data API client.
+type Client struct {
+	token      *oauth.Token
+	baseURL    string
+	httpClient *http.Client
+}
+
+// NewClient creates a new YouTube API client with the given OAuth token.
+func NewClient(token *oauth.Token) *Client {
+	return &Client{
+		token:      token,
+		baseURL:    "https://www.googleapis.com",
+		httpClient: &http.Client{},
+	}
+}
+
+// SetBaseURL sets the base URL for API requests (used for testing).
+func (c *Client) SetBaseURL(url string) {
+	c.baseURL = url
+}
+
+// FetchSubscriptions retrieves the authenticated user's subscriptions.
+func (c *Client) FetchSubscriptions(ctx context.Context) ([]Subscription, error) {
+	url := fmt.Sprintf("%s/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50", c.baseURL)
+
+	body, err := c.doRequest(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	var response subscriptionsResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse subscriptions response: %w", err)
+	}
+
+	subs := make([]Subscription, 0, len(response.Items))
+	for _, item := range response.Items {
+		publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+		thumbnail := ""
+		if item.Snippet.Thumbnails.Default.URL != "" {
+			thumbnail = item.Snippet.Thumbnails.Default.URL
+		}
+
+		subs = append(subs, Subscription{
+			ChannelID:    item.Snippet.ResourceID.ChannelID,
+			ChannelTitle: item.Snippet.Title,
+			Description:  item.Snippet.Description,
+			Thumbnail:    thumbnail,
+			SubscribedAt: publishedAt,
+		})
+	}
+
+	return subs, nil
+}
+
+// FetchRecentVideos retrieves recent videos from a channel.
+func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit int) ([]Video, error) {
+	// First, search for videos from the channel
+	searchURL := fmt.Sprintf("%s/youtube/v3/search?part=snippet&channelId=%s&maxResults=%d&order=date&type=video",
+		c.baseURL, channelID, limit)
+
+	body, err := c.doRequest(ctx, searchURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var searchResponse searchResponse
+	if err := json.Unmarshal(body, &searchResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	if len(searchResponse.Items) == 0 {
+		return []Video{}, nil
+	}
+
+	// Collect video IDs
+	videoIDs := make([]string, 0, len(searchResponse.Items))
+	for _, item := range searchResponse.Items {
+		videoIDs = append(videoIDs, item.ID.VideoID)
+	}
+
+	// Get video details (stats, duration)
+	videosURL := fmt.Sprintf("%s/youtube/v3/videos?part=statistics,contentDetails&id=%s",
+		c.baseURL, joinIDs(videoIDs))
+
+	body, err = c.doRequest(ctx, videosURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var videosResponse videosResponse
+	if err := json.Unmarshal(body, &videosResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse videos response: %w", err)
+	}
+
+	// Build stats map
+	statsMap := make(map[string]videoStats)
+	for _, item := range videosResponse.Items {
+		viewCount, _ := strconv.ParseInt(item.Statistics.ViewCount, 10, 64)
+		likeCount, _ := strconv.ParseInt(item.Statistics.LikeCount, 10, 64)
+		statsMap[item.ID] = videoStats{
+			viewCount: viewCount,
+			likeCount: likeCount,
+			duration:  item.ContentDetails.Duration,
+		}
+	}
+
+	// Combine search results with stats
+	videos := make([]Video, 0, len(searchResponse.Items))
+	for _, item := range searchResponse.Items {
+		publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+		thumbnail := ""
+		if item.Snippet.Thumbnails.Default.URL != "" {
+			thumbnail = item.Snippet.Thumbnails.Default.URL
+		}
+
+		stats := statsMap[item.ID.VideoID]
+		videos = append(videos, Video{
+			ID:           item.ID.VideoID,
+			Title:        item.Snippet.Title,
+			Description:  item.Snippet.Description,
+			ChannelID:    item.Snippet.ChannelID,
+			ChannelTitle: item.Snippet.ChannelTitle,
+			Thumbnail:    thumbnail,
+			PublishedAt:  publishedAt,
+			ViewCount:    stats.viewCount,
+			LikeCount:    stats.likeCount,
+			Duration:     stats.duration,
+			URL:          fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
+		})
+	}
+
+	return videos, nil
+}
+
+// FetchLikedVideos retrieves videos the authenticated user has liked.
+func (c *Client) FetchLikedVideos(ctx context.Context, limit int) ([]LikedVideo, error) {
+	// "LL" is the special playlist ID for liked videos
+	url := fmt.Sprintf("%s/youtube/v3/playlistItems?part=snippet&playlistId=LL&maxResults=%d",
+		c.baseURL, limit)
+
+	body, err := c.doRequest(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	var response playlistItemsResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse playlist items response: %w", err)
+	}
+
+	videos := make([]LikedVideo, 0, len(response.Items))
+	for _, item := range response.Items {
+		publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+		thumbnail := ""
+		if item.Snippet.Thumbnails.Default.URL != "" {
+			thumbnail = item.Snippet.Thumbnails.Default.URL
+		}
+
+		videos = append(videos, LikedVideo{
+			Video: Video{
+				ID:           item.Snippet.ResourceID.VideoID,
+				Title:        item.Snippet.Title,
+				Description:  item.Snippet.Description,
+				ChannelID:    item.Snippet.ChannelID,
+				ChannelTitle: item.Snippet.ChannelTitle,
+				Thumbnail:    thumbnail,
+				PublishedAt:  publishedAt,
+				URL:          fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.Snippet.ResourceID.VideoID),
+			},
+			LikedAt: publishedAt, // API doesn't provide liked time, use published
+		})
+	}
+
+	return videos, nil
+}
+
+// doRequest performs an authenticated HTTP request.
+func (c *Client) doRequest(ctx context.Context, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token.AccessToken))
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error: status %d", resp.StatusCode)
+	}
+
+	return body, nil
+}
+
+func joinIDs(ids []string) string {
+	result := ""
+	for i, id := range ids {
+		if i > 0 {
+			result += ","
+		}
+		result += id
+	}
+	return result
+}
+
+// API response types
+
+type subscriptionsResponse struct {
+	Items []struct {
+		Snippet struct {
+			ResourceID struct {
+				ChannelID string `json:"channelId"`
+			} `json:"resourceId"`
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			PublishedAt string `json:"publishedAt"`
+			Thumbnails  struct {
+				Default struct {
+					URL string `json:"url"`
+				} `json:"default"`
+			} `json:"thumbnails"`
+		} `json:"snippet"`
+	} `json:"items"`
+}
+
+type searchResponse struct {
+	Items []struct {
+		ID struct {
+			VideoID string `json:"videoId"`
+		} `json:"id"`
+		Snippet struct {
+			Title        string `json:"title"`
+			Description  string `json:"description"`
+			ChannelID    string `json:"channelId"`
+			ChannelTitle string `json:"channelTitle"`
+			PublishedAt  string `json:"publishedAt"`
+			Thumbnails   struct {
+				Default struct {
+					URL string `json:"url"`
+				} `json:"default"`
+			} `json:"thumbnails"`
+		} `json:"snippet"`
+	} `json:"items"`
+}
+
+type videosResponse struct {
+	Items []struct {
+		ID         string `json:"id"`
+		Statistics struct {
+			ViewCount string `json:"viewCount"`
+			LikeCount string `json:"likeCount"`
+		} `json:"statistics"`
+		ContentDetails struct {
+			Duration string `json:"duration"`
+		} `json:"contentDetails"`
+	} `json:"items"`
+}
+
+type playlistItemsResponse struct {
+	Items []struct {
+		Snippet struct {
+			ResourceID struct {
+				VideoID string `json:"videoId"`
+			} `json:"resourceId"`
+			Title        string `json:"title"`
+			Description  string `json:"description"`
+			ChannelID    string `json:"channelId"`
+			ChannelTitle string `json:"channelTitle"`
+			PublishedAt  string `json:"publishedAt"`
+			Thumbnails   struct {
+				Default struct {
+					URL string `json:"url"`
+				} `json:"default"`
+			} `json:"thumbnails"`
+		} `json:"snippet"`
+	} `json:"items"`
+}
+
+type videoStats struct {
+	viewCount int64
+	likeCount int64
+	duration  string
+}
