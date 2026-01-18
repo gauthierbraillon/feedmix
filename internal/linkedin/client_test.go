@@ -94,8 +94,7 @@ func TestClient_FetchProfile(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	profile, err := client.FetchProfile(ctx)
@@ -155,8 +154,7 @@ func TestClient_FetchFeed(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	posts, err := client.FetchFeed(ctx, 10)
@@ -208,8 +206,7 @@ func TestClient_FetchReactions(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	reactions, err := client.FetchReactions(ctx, 10)
@@ -248,8 +245,7 @@ func TestClient_APIError(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	_, err := client.FetchProfile(ctx)
@@ -274,8 +270,7 @@ func TestClient_Timeout(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()

@@ -15,25 +15,50 @@ import (
 	"feedmix/pkg/oauth"
 )
 
+const defaultBaseURL = "https://api.linkedin.com"
+
+// HTTPClient interface for making HTTP requests (allows injection for testing).
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// ClientOption configures the Client.
+type ClientOption func(*Client)
+
+// WithHTTPClient sets a custom HTTP client.
+func WithHTTPClient(httpClient HTTPClient) ClientOption {
+	return func(c *Client) {
+		c.httpClient = httpClient
+	}
+}
+
+// WithBaseURL sets a custom base URL (useful for testing).
+func WithBaseURL(url string) ClientOption {
+	return func(c *Client) {
+		c.baseURL = url
+	}
+}
+
 // Client is a LinkedIn API client.
 type Client struct {
 	token      *oauth.Token
 	baseURL    string
-	httpClient *http.Client
+	httpClient HTTPClient
 }
 
 // NewClient creates a new LinkedIn API client with the given OAuth token.
-func NewClient(token *oauth.Token) *Client {
-	return &Client{
+func NewClient(token *oauth.Token, opts ...ClientOption) *Client {
+	c := &Client{
 		token:      token,
-		baseURL:    "https://api.linkedin.com",
+		baseURL:    defaultBaseURL,
 		httpClient: &http.Client{},
 	}
-}
 
-// SetBaseURL sets the base URL for API requests (used for testing).
-func (c *Client) SetBaseURL(url string) {
-	c.baseURL = url
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 // FetchProfile retrieves the authenticated user's profile.
@@ -123,7 +148,6 @@ func (c *Client) FetchReactions(ctx context.Context, limit int) ([]Reaction, err
 	return reactions, nil
 }
 
-// doRequest performs an authenticated HTTP request.
 func (c *Client) doRequest(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -152,25 +176,22 @@ func (c *Client) doRequest(ctx context.Context, url string) ([]byte, error) {
 	return body, nil
 }
 
-// getLocalizedValue extracts the localized value from LinkedIn's nested structure.
 func getLocalizedValue(lv localizedValue) string {
 	if lv.Localized == nil {
 		return ""
 	}
-	// Try common locales
 	for _, locale := range []string{"en_US", "en_GB", "en"} {
 		if v, ok := lv.Localized[locale]; ok {
 			return v
 		}
 	}
-	// Return first available
 	for _, v := range lv.Localized {
 		return v
 	}
 	return ""
 }
 
-// API response types
+// API response types (private - implementation detail)
 
 type localizedValue struct {
 	Localized map[string]string `json:"localized"`

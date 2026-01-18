@@ -90,8 +90,7 @@ func TestClient_FetchSubscriptions(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	subs, err := client.FetchSubscriptions(ctx)
@@ -173,8 +172,7 @@ func TestClient_FetchRecentVideos(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	videos, err := client.FetchRecentVideos(ctx, "UC123", 10)
@@ -248,8 +246,7 @@ func TestClient_FetchLikedVideos(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	videos, err := client.FetchLikedVideos(ctx, 10)
@@ -287,8 +284,7 @@ func TestClient_APIError(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx := context.Background()
 	_, err := client.FetchSubscriptions(ctx)
@@ -314,8 +310,7 @@ func TestClient_Timeout(t *testing.T) {
 		TokenType:   "Bearer",
 	}
 
-	client := NewClient(token)
-	client.SetBaseURL(server.URL)
+	client := NewClient(token, WithBaseURL(server.URL))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()

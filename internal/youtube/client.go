@@ -13,25 +13,50 @@ import (
 	"feedmix/pkg/oauth"
 )
 
+const defaultBaseURL = "https://www.googleapis.com"
+
+// HTTPClient interface for making HTTP requests (allows injection for testing).
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// ClientOption configures the Client.
+type ClientOption func(*Client)
+
+// WithHTTPClient sets a custom HTTP client.
+func WithHTTPClient(httpClient HTTPClient) ClientOption {
+	return func(c *Client) {
+		c.httpClient = httpClient
+	}
+}
+
+// WithBaseURL sets a custom base URL (useful for testing).
+func WithBaseURL(url string) ClientOption {
+	return func(c *Client) {
+		c.baseURL = url
+	}
+}
+
 // Client is a YouTube Data API client.
 type Client struct {
 	token      *oauth.Token
 	baseURL    string
-	httpClient *http.Client
+	httpClient HTTPClient
 }
 
 // NewClient creates a new YouTube API client with the given OAuth token.
-func NewClient(token *oauth.Token) *Client {
-	return &Client{
+func NewClient(token *oauth.Token, opts ...ClientOption) *Client {
+	c := &Client{
 		token:      token,
-		baseURL:    "https://www.googleapis.com",
+		baseURL:    defaultBaseURL,
 		httpClient: &http.Client{},
 	}
-}
 
-// SetBaseURL sets the base URL for API requests (used for testing).
-func (c *Client) SetBaseURL(url string) {
-	c.baseURL = url
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 // FetchSubscriptions retrieves the authenticated user's subscriptions.
@@ -70,7 +95,6 @@ func (c *Client) FetchSubscriptions(ctx context.Context) ([]Subscription, error)
 
 // FetchRecentVideos retrieves recent videos from a channel.
 func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit int) ([]Video, error) {
-	// First, search for videos from the channel
 	searchURL := fmt.Sprintf("%s/youtube/v3/search?part=snippet&channelId=%s&maxResults=%d&order=date&type=video",
 		c.baseURL, channelID, limit)
 
@@ -79,22 +103,20 @@ func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit 
 		return nil, err
 	}
 
-	var searchResponse searchResponse
-	if err := json.Unmarshal(body, &searchResponse); err != nil {
+	var searchResp searchResponse
+	if err := json.Unmarshal(body, &searchResp); err != nil {
 		return nil, fmt.Errorf("failed to parse search response: %w", err)
 	}
 
-	if len(searchResponse.Items) == 0 {
+	if len(searchResp.Items) == 0 {
 		return []Video{}, nil
 	}
 
-	// Collect video IDs
-	videoIDs := make([]string, 0, len(searchResponse.Items))
-	for _, item := range searchResponse.Items {
+	videoIDs := make([]string, 0, len(searchResp.Items))
+	for _, item := range searchResp.Items {
 		videoIDs = append(videoIDs, item.ID.VideoID)
 	}
 
-	// Get video details (stats, duration)
 	videosURL := fmt.Sprintf("%s/youtube/v3/videos?part=statistics,contentDetails&id=%s",
 		c.baseURL, joinIDs(videoIDs))
 
@@ -103,14 +125,13 @@ func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit 
 		return nil, err
 	}
 
-	var videosResponse videosResponse
-	if err := json.Unmarshal(body, &videosResponse); err != nil {
+	var videosResp videosResponse
+	if err := json.Unmarshal(body, &videosResp); err != nil {
 		return nil, fmt.Errorf("failed to parse videos response: %w", err)
 	}
 
-	// Build stats map
 	statsMap := make(map[string]videoStats)
-	for _, item := range videosResponse.Items {
+	for _, item := range videosResp.Items {
 		viewCount, _ := strconv.ParseInt(item.Statistics.ViewCount, 10, 64)
 		likeCount, _ := strconv.ParseInt(item.Statistics.LikeCount, 10, 64)
 		statsMap[item.ID] = videoStats{
@@ -120,9 +141,8 @@ func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit 
 		}
 	}
 
-	// Combine search results with stats
-	videos := make([]Video, 0, len(searchResponse.Items))
-	for _, item := range searchResponse.Items {
+	videos := make([]Video, 0, len(searchResp.Items))
+	for _, item := range searchResp.Items {
 		publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 		thumbnail := ""
 		if item.Snippet.Thumbnails.Default.URL != "" {
@@ -150,7 +170,6 @@ func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit 
 
 // FetchLikedVideos retrieves videos the authenticated user has liked.
 func (c *Client) FetchLikedVideos(ctx context.Context, limit int) ([]LikedVideo, error) {
-	// "LL" is the special playlist ID for liked videos
 	url := fmt.Sprintf("%s/youtube/v3/playlistItems?part=snippet&playlistId=LL&maxResults=%d",
 		c.baseURL, limit)
 
@@ -183,14 +202,13 @@ func (c *Client) FetchLikedVideos(ctx context.Context, limit int) ([]LikedVideo,
 				PublishedAt:  publishedAt,
 				URL:          fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.Snippet.ResourceID.VideoID),
 			},
-			LikedAt: publishedAt, // API doesn't provide liked time, use published
+			LikedAt: publishedAt,
 		})
 	}
 
 	return videos, nil
 }
 
-// doRequest performs an authenticated HTTP request.
 func (c *Client) doRequest(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -229,7 +247,7 @@ func joinIDs(ids []string) string {
 	return result
 }
 
-// API response types
+// API response types (private - implementation detail)
 
 type subscriptionsResponse struct {
 	Items []struct {
