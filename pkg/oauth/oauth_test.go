@@ -153,16 +153,6 @@ func TestFlow_GenerateAuthURL(t *testing.T) {
 	}
 }
 
-// TestFlow_ExchangeCode documents the token exchange process:
-// - Valid authorization code returns a token
-// - Invalid code returns an error
-// - Token contains access_token field
-func TestFlow_ExchangeCode(t *testing.T) {
-	// This test requires a mock HTTP server
-	// In GREEN phase, we'll implement with proper mocking
-	t.Skip("requires mock HTTP server - implement in GREEN phase")
-}
-
 // TestTokenStorage_SaveAndLoad documents token persistence:
 // - Tokens can be saved to a file
 // - Saved tokens can be loaded back
