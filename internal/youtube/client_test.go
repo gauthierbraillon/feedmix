@@ -81,7 +81,7 @@ func TestClient_FetchSubscriptions(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockResponse)
+		_ = json.NewEncoder(w).Encode(mockResponse)
 	}))
 	defer server.Close()
 
@@ -160,9 +160,9 @@ func TestClient_FetchRecentVideos(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.URL.Path == "/youtube/v3/search" {
-			json.NewEncoder(w).Encode(searchResponse)
+			_ = json.NewEncoder(w).Encode(searchResponse)
 		} else if r.URL.Path == "/youtube/v3/videos" {
-			json.NewEncoder(w).Encode(videoResponse)
+			_ = json.NewEncoder(w).Encode(videoResponse)
 		}
 	}))
 	defer server.Close()
@@ -237,7 +237,7 @@ func TestClient_FetchLikedVideos(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockResponse)
+		_ = json.NewEncoder(w).Encode(mockResponse)
 	}))
 	defer server.Close()
 
@@ -270,7 +270,7 @@ func TestClient_FetchLikedVideos(t *testing.T) {
 func TestClient_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{
 				"code":    401,
 				"message": "Invalid credentials",
