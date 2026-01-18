@@ -6,10 +6,10 @@ Aggregate feeds from YouTube and LinkedIn into a unified CLI view.
 
 ```bash
 # From source
-go install github.com/gosha/feedmix/cmd/feedmix@latest
+go install github.com/gauthierbraillon/feedmix/cmd/feedmix@latest
 
 # Or download binary from releases
-curl -L https://github.com/gosha/feedmix/releases/latest/download/feedmix-linux-amd64 -o feedmix
+curl -L https://github.com/gauthierbraillon/feedmix/releases/latest/download/feedmix-linux-amd64 -o feedmix
 chmod +x feedmix
 ```
 
