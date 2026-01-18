@@ -57,9 +57,6 @@ func (f *TerminalFormatter) formatEngagement(e aggregator.Engagement) string {
 	if e.Comments > 0 {
 		parts = append(parts, fmt.Sprintf("%d comments", e.Comments))
 	}
-	if e.Shares > 0 {
-		parts = append(parts, fmt.Sprintf("%d shares", e.Shares))
-	}
 
 	return strings.Join(parts, separator)
 }
