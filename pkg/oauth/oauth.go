@@ -181,7 +181,10 @@ func (s *CallbackServer) WaitForCallback(ctx context.Context, expectedState stri
 		return "", fmt.Errorf("failed to start server: %w", err)
 	}
 
-	server := &http.Server{Handler: mux}
+	server := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	go func() { _ = server.Serve(listener) }()
 	defer server.Close()
 
@@ -216,11 +219,15 @@ func (s *TokenStorage) Save(provider string, token *Token) error {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
 
-	return os.WriteFile(filepath.Join(s.dir, provider+"_token.json"), data, 0600)
+	// Sanitize provider to prevent path traversal
+	cleanProvider := filepath.Base(provider)
+	return os.WriteFile(filepath.Join(s.dir, cleanProvider+"_token.json"), data, 0600)
 }
 
 func (s *TokenStorage) Load(provider string) (*Token, error) {
-	data, err := os.ReadFile(filepath.Join(s.dir, provider+"_token.json"))
+	// Sanitize provider to prevent path traversal (G304)
+	cleanProvider := filepath.Base(provider)
+	data, err := os.ReadFile(filepath.Join(s.dir, cleanProvider+"_token.json")) // #nosec G304 -- provider is sanitized
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, ErrTokenNotFound
