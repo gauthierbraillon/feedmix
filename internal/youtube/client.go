@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"feedmix/pkg/oauth"
+	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
 
 const defaultBaseURL = "https://www.googleapis.com"

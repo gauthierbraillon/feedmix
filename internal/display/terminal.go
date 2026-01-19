@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"feedmix/internal/aggregator"
+	"github.com/gauthierbraillon/feedmix/internal/aggregator"
 )
 
 const separator = " • "

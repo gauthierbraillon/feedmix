@@ -11,11 +11,11 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 
-	"feedmix/internal/aggregator"
-	"feedmix/internal/display"
-	"feedmix/internal/youtube"
-	"feedmix/pkg/browser"
-	"feedmix/pkg/oauth"
+	"github.com/gauthierbraillon/feedmix/internal/aggregator"
+	"github.com/gauthierbraillon/feedmix/internal/display"
+	"github.com/gauthierbraillon/feedmix/internal/youtube"
+	"github.com/gauthierbraillon/feedmix/pkg/browser"
+	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
 
 var version = "0.1.0"

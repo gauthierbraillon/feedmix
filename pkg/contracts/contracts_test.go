@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"feedmix/internal/youtube"
-	"feedmix/pkg/oauth"
+	"github.com/gauthierbraillon/feedmix/internal/youtube"
+	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
 
 var YouTubeSubscriptionContract = `{

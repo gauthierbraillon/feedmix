@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"feedmix/pkg/oauth"
+	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
 
 // TestNewClient documents client creation requirements:

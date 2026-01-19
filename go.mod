@@ -1,4 +1,4 @@
-module feedmix
+module github.com/gauthierbraillon/feedmix
 
 go 1.22
 
