@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 
 	"feedmix/internal/aggregator"
@@ -20,6 +21,9 @@ import (
 var version = "0.1.0"
 
 func main() {
+	// Load .env file if it exists (silently ignore if not found)
+	_ = godotenv.Load()
+
 	if err := newRootCmd().Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -142,6 +146,7 @@ func newFeedCmd() *cobra.Command {
 					Description: sub.Description,
 					Author:      sub.ChannelTitle,
 					AuthorID:    sub.ChannelID,
+					URL:         fmt.Sprintf("https://youtube.com/channel/%s", sub.ChannelID),
 					Thumbnail:   sub.Thumbnail,
 					PublishedAt: sub.SubscribedAt,
 				}})

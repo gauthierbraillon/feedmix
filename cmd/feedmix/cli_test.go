@@ -114,3 +114,43 @@ func TestFeedCommand_DisplaysItems(t *testing.T) {
 		t.Errorf("should show feed item, got: %s", stdout)
 	}
 }
+
+func TestFeedCommand_DisplaysChannelURLs(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"items": []map[string]interface{}{
+				{
+					"snippet": map[string]interface{}{
+						"resourceId":  map[string]interface{}{"channelId": "UCxYz123ABC"},
+						"title":       "Tech Channel",
+						"thumbnails":  map[string]interface{}{"default": map[string]interface{}{"url": "http://example.com/thumb.jpg"}},
+						"publishedAt": "2024-01-01T00:00:00Z",
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	configDir, _ := os.MkdirTemp("", "feedmix-config")
+	defer os.RemoveAll(configDir)
+
+	tokenData := `{"access_token":"test-token","token_type":"Bearer"}`
+	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(tokenData), 0600)
+
+	env := map[string]string{
+		"FEEDMIX_CONFIG_DIR": configDir,
+		"FEEDMIX_API_URL":    server.URL,
+	}
+
+	stdout, _, exitCode := runCLI(t, env, "feed")
+	if exitCode != 0 {
+		t.Errorf("feed should succeed, got exit code %d", exitCode)
+	}
+
+	expectedURL := "https://youtube.com/channel/UCxYz123ABC"
+	if !strings.Contains(stdout, expectedURL) {
+		t.Errorf("feed should display channel URL %q, got: %s", expectedURL, stdout)
+	}
+}
