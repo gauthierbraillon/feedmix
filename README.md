@@ -14,6 +14,13 @@ Create OAuth credentials at [Google Cloud Console](https://console.cloud.google.
 1. Create OAuth 2.0 Client ID (Desktop app)
 2. Add `http://localhost:8080/callback` as authorized redirect URI
 
+**Option 1: Using .env file (recommended)**
+```bash
+cp .env.example .env
+# Edit .env and add your credentials
+```
+
+**Option 2: Using environment variables**
 ```bash
 export FEEDMIX_YOUTUBE_CLIENT_ID="your-client-id"
 export FEEDMIX_YOUTUBE_CLIENT_SECRET="your-client-secret"
