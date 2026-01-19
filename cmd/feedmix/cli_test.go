@@ -115,21 +115,64 @@ func TestFeedCommand_DisplaysItems(t *testing.T) {
 	}
 }
 
-func TestFeedCommand_DisplaysChannelURLs(t *testing.T) {
+func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"items": []map[string]interface{}{
-				{
-					"snippet": map[string]interface{}{
-						"resourceId":  map[string]interface{}{"channelId": "UCxYz123ABC"},
-						"title":       "Tech Channel",
-						"thumbnails":  map[string]interface{}{"default": map[string]interface{}{"url": "http://example.com/thumb.jpg"}},
-						"publishedAt": "2024-01-01T00:00:00Z",
+
+		// First call: subscriptions
+		if strings.Contains(r.URL.Path, "/subscriptions") {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"items": []map[string]interface{}{
+					{
+						"snippet": map[string]interface{}{
+							"resourceId":  map[string]interface{}{"channelId": "UCxYz123ABC"},
+							"title":       "Tech Channel",
+							"thumbnails":  map[string]interface{}{"default": map[string]interface{}{"url": "http://example.com/thumb.jpg"}},
+							"publishedAt": "2024-01-01T00:00:00Z",
+						},
 					},
 				},
-			},
-		})
+			})
+			return
+		}
+
+		// Second call: search for videos
+		if strings.Contains(r.URL.Path, "/search") {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"items": []map[string]interface{}{
+					{
+						"id": map[string]interface{}{"videoId": "dQw4w9WgXcQ"},
+						"snippet": map[string]interface{}{
+							"title":        "Amazing Video",
+							"description":  "Great content",
+							"channelId":    "UCxYz123ABC",
+							"channelTitle": "Tech Channel",
+							"publishedAt":  "2024-01-15T12:00:00Z",
+							"thumbnails":   map[string]interface{}{"default": map[string]interface{}{"url": "http://example.com/video-thumb.jpg"}},
+						},
+					},
+				},
+			})
+			return
+		}
+
+		// Third call: video statistics
+		if strings.Contains(r.URL.Path, "/videos") {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"items": []map[string]interface{}{
+					{
+						"id": "dQw4w9WgXcQ",
+						"statistics": map[string]interface{}{
+							"viewCount": "1000000",
+							"likeCount": "50000",
+						},
+						"contentDetails": map[string]interface{}{
+							"duration": "PT3M30S",
+						},
+					},
+				},
+			})
+		}
 	}))
 	defer server.Close()
 
@@ -149,8 +192,15 @@ func TestFeedCommand_DisplaysChannelURLs(t *testing.T) {
 		t.Errorf("feed should succeed, got exit code %d", exitCode)
 	}
 
-	expectedURL := "https://youtube.com/channel/UCxYz123ABC"
-	if !strings.Contains(stdout, expectedURL) {
-		t.Errorf("feed should display channel URL %q, got: %s", expectedURL, stdout)
+	// Should display video URL, not channel URL
+	expectedVideoURL := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+	if !strings.Contains(stdout, expectedVideoURL) {
+		t.Errorf("feed should display video URL %q, got: %s", expectedVideoURL, stdout)
+	}
+
+	// Should NOT display channel URL
+	channelURL := "https://youtube.com/channel/UCxYz123ABC"
+	if strings.Contains(stdout, channelURL) {
+		t.Errorf("feed should NOT display channel URL %q (should show videos instead), got: %s", channelURL, stdout)
 	}
 }

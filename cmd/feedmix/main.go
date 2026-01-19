@@ -138,18 +138,33 @@ func newFeedCmd() *cobra.Command {
 
 			agg := aggregator.New()
 			for _, sub := range subs {
-				agg.AddItems([]aggregator.FeedItem{{
-					ID:          sub.ChannelID,
-					Source:      aggregator.SourceYouTube,
-					Type:        aggregator.ItemTypeVideo,
-					Title:       sub.ChannelTitle,
-					Description: sub.Description,
-					Author:      sub.ChannelTitle,
-					AuthorID:    sub.ChannelID,
-					URL:         fmt.Sprintf("https://youtube.com/channel/%s", sub.ChannelID),
-					Thumbnail:   sub.Thumbnail,
-					PublishedAt: sub.SubscribedAt,
-				}})
+				// Fetch recent videos from each subscribed channel
+				videos, err := client.FetchRecentVideos(ctx, sub.ChannelID, 5)
+				if err != nil {
+					// Log error but continue with other channels
+					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to fetch videos from %s: %v\n", sub.ChannelTitle, err)
+					continue
+				}
+
+				// Add each video as a feed item
+				for _, video := range videos {
+					agg.AddItems([]aggregator.FeedItem{{
+						ID:          video.ID,
+						Source:      aggregator.SourceYouTube,
+						Type:        aggregator.ItemTypeVideo,
+						Title:       video.Title,
+						Description: video.Description,
+						Author:      video.ChannelTitle,
+						AuthorID:    video.ChannelID,
+						URL:         video.URL,
+						Thumbnail:   video.Thumbnail,
+						PublishedAt: video.PublishedAt,
+						Engagement: aggregator.Engagement{
+							Views: video.ViewCount,
+							Likes: video.LikeCount,
+						},
+					}})
+				}
 			}
 
 			items := agg.GetFeed(aggregator.FeedOptions{Limit: limit})
