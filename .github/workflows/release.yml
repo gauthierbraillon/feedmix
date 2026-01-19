@@ -30,6 +30,9 @@ jobs:
       - name: Run contract tests
         run: go test -v ./pkg/contracts/...
 
+      - name: Run integration tests
+        run: go test -tags=integration -v ./pkg/oauth/...
+
       - name: Build release binaries
         run: |
           VERSION=${GITHUB_REF#refs/tags/}

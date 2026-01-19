@@ -32,6 +32,10 @@ step "Contract tests..."
 go test -v ./pkg/contracts/... || fail "Contract tests failed"
 success "Passed"
 
+step "Integration tests (Ubuntu)..."
+go test -tags=integration -v ./pkg/oauth/... || fail "Integration tests failed"
+success "Passed"
+
 step "Security (govulncheck)..."
 if command -v govulncheck &>/dev/null; then
     govulncheck ./... || fail "Vulnerabilities found"
