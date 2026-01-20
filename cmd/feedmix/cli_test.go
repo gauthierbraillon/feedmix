@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,7 +22,18 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(dir)
 
 	binaryPath = filepath.Join(dir, "feedmix")
-	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+
+	// Get version from git for build
+	versionCmd := exec.Command("git", "describe", "--tags", "--always", "--dirty")
+	versionOutput, err := versionCmd.Output()
+	version := "dev"
+	if err == nil {
+		version = strings.TrimSpace(string(versionOutput))
+	}
+
+	// Build with version injected via ldflags
+	ldflags := fmt.Sprintf("-X main.version=%s", version)
+	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryPath, ".")
 	if err := cmd.Run(); err != nil {
 		panic("failed to build: " + err.Error())
 	}
@@ -60,12 +72,32 @@ func TestRootCommand_Help(t *testing.T) {
 	}
 }
 
+func TestRootCommand_HelpShowsVersion(t *testing.T) {
+	helpOutput, _, _ := runCLI(t, nil, "--help")
+	versionOutput, _, _ := runCLI(t, nil, "--version")
+
+	// Extract version from --version output (e.g., "feedmix version v0.2.0")
+	versionLine := strings.TrimSpace(versionOutput)
+	parts := strings.Fields(versionLine)
+	if len(parts) < 3 {
+		t.Fatalf("unexpected version output format: %s", versionOutput)
+	}
+	actualVersion := parts[2] // "feedmix version v0.2.0" -> "v0.2.0"
+
+	// Requirement: --help MUST show the same version as --version
+	// This ensures users know which version they're running from help output
+	if !strings.Contains(helpOutput, actualVersion) {
+		t.Errorf("--help should display version %q (same as --version), but it's missing.\nHelp output: %s", actualVersion, helpOutput)
+	}
+}
+
 func TestRootCommand_Version(t *testing.T) {
 	stdout, _, _ := runCLI(t, nil, "--version")
 	if !strings.Contains(stdout, "feedmix") {
 		t.Errorf("version should show feedmix, got: %s", stdout)
 	}
 }
+
 
 func TestAuthCommand_RequiresCredentials(t *testing.T) {
 	_, stderr, exitCode := runCLI(t, nil, "auth")

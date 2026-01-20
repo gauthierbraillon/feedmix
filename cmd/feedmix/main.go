@@ -18,7 +18,9 @@ import (
 	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
 
-var version = "0.1.0"
+// version is set via ldflags at build time:
+//   go build -ldflags="-X main.version=$(git describe --tags --always --dirty)"
+var version = "dev"
 
 func main() {
 	// Load .env file if it exists (silently ignore if not found)
@@ -41,7 +43,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:     "feedmix",
 		Short:   "Aggregate feeds from YouTube",
-		Long:    "Feedmix aggregates your YouTube subscriptions into a unified feed.",
+		Long:    fmt.Sprintf("Feedmix aggregates your YouTube subscriptions into a unified feed.\n\nVersion: %s", version),
 		Version: version,
 	}
 

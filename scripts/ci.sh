@@ -33,7 +33,7 @@ go test -v ./pkg/contracts/... || fail "Contract tests failed"
 success "Passed"
 
 step "Integration tests (Ubuntu)..."
-go test -tags=integration -v ./pkg/oauth/... || fail "Integration tests failed"
+go test -tags=integration -v ./pkg/oauth/... ./cmd/feedmix/... || fail "Integration tests failed"
 success "Passed"
 
 step "Security (govulncheck)..."
@@ -45,8 +45,9 @@ else
 fi
 
 step "Build..."
-go build -o feedmix ./cmd/feedmix || fail "Build failed"
-success "Built ./feedmix"
+VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+go build -ldflags="-X main.version=$VERSION" -o feedmix ./cmd/feedmix || fail "Build failed"
+success "Built ./feedmix (version: $VERSION)"
 
 step "Verify..."
 ./feedmix --version || fail "Binary failed"
