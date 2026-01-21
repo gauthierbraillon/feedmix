@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -20,7 +21,31 @@ import (
 
 // version is set via ldflags at build time:
 //   go build -ldflags="-X main.version=$(git describe --tags --always --dirty)"
+// OR automatically from build info when installed via: go install github.com/user/repo/cmd/tool@v1.2.3
 var version = "dev"
+
+func init() {
+	// Resolve actual version (ldflags or build info)
+	buildInfo, _ := debug.ReadBuildInfo()
+	version = resolveVersion(version, buildInfo)
+}
+
+// resolveVersion determines the correct version to use.
+// Priority: 1) ldflags version, 2) build info version, 3) "dev"
+func resolveVersion(ldflagsVersion string, buildInfo *debug.BuildInfo) string {
+	// If version was set via ldflags (not "dev"), use it
+	if ldflagsVersion != "dev" {
+		return ldflagsVersion
+	}
+
+	// Try to get version from build info (set by go install)
+	if buildInfo != nil && buildInfo.Main.Version != "" && buildInfo.Main.Version != "(devel)" {
+		return buildInfo.Main.Version
+	}
+
+	// Fall back to "dev"
+	return "dev"
+}
 
 func main() {
 	// Load .env file if it exists (silently ignore if not found)
