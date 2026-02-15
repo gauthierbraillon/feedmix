@@ -24,12 +24,8 @@ step "Vet..."
 go vet ./... || fail "go vet failed"
 success "Passed"
 
-step "Tests..."
+step "Tests (includes contracts)..."
 go test -race -cover ./... || fail "Tests failed"
-success "Passed"
-
-step "Contract tests..."
-go test -v ./pkg/contracts/... || fail "Contract tests failed"
 success "Passed"
 
 step "Integration tests (Ubuntu)..."

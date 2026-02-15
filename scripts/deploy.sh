@@ -25,4 +25,13 @@ cd "$BUILD_DIR" && sha256sum feedmix-* > checksums.txt && cd ..
 
 echo -e "\nArtifacts in $BUILD_DIR/:"
 ls -la "$BUILD_DIR/"
+
+# Run E2E smoke tests on locally built binary
+echo -e "\n=== E2E Smoke Tests ==="
+VERSION="$VERSION" ./tests/e2e-smoke.sh || {
+    echo -e "\n❌ E2E smoke tests failed. Fix issues before releasing."
+    exit 1
+}
+
+echo -e "\n✅ All checks passed!"
 echo -e "\nTo release: git tag v$VERSION && git push origin v$VERSION"

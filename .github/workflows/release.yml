@@ -59,6 +59,7 @@ jobs:
           sha256sum feedmix-* > checksums.txt
 
       - name: Create Release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -66,3 +67,25 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+
+      - name: E2E Smoke Tests
+        id: smoke_tests
+        run: |
+          chmod +x tests/e2e-smoke.sh
+          ./tests/e2e-smoke.sh
+        continue-on-error: true
+
+      - name: Rollback on E2E Failure
+        if: steps.smoke_tests.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "::error::E2E smoke tests failed. Rolling back release."
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Delete the release
+          gh release delete "$VERSION" --yes --cleanup-tag
+
+          echo "::error::Release $VERSION has been rolled back due to E2E test failures."
+          echo "::error::Fix the issues and create a new release."
+          exit 1
