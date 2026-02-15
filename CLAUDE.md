@@ -24,28 +24,18 @@ Feedmix is a CLI tool for aggregating YouTube subscriptions into a terminal feed
 
 ### ATDD (Acceptance Test Driven Development)
 
-This project uses **ATDD, not pure TDD**. The key differences:
-
-**ATDD (What We Do):**
+**Philosophy:**
 - Tests ARE the acceptance criteria and testable requirements
-- Test names describe behavior (e.g., "TestOAuthFlow_ReturnsTokensAfterCallback")
 - Write test as specification first, then implement to pass the test
 - No separate requirements document - tests document requirements
 - Tests describe observable behavior, not internal design
 
-**Pure TDD (What We Don't Do):**
-- Uses tests primarily to drive internal design decisions
-- Tests often focus on class structure and object interactions
-- May create tests that drive unnecessary abstractions
-- Tests can be coupled to implementation details
-
-**Our Approach:**
-1. Product Manager defines requirements as acceptance criteria
-2. Developer writes test as executable specification (RED)
-3. Developer implements minimum code to pass test (GREEN)
-4. Developer refactors without changing behavior (REFACTOR)
-5. QA Engineer verifies test coverage is complete (CI)
-6. SRE deploys and monitors (DEPLOY)
+**Workflow:**
+1. Write test as executable specification (RED)
+2. Implement minimum code to pass test (GREEN)
+3. Refactor without changing behavior (REFACTOR)
+4. Run CI validation (CI)
+5. Deploy (DEPLOY)
 
 ### Test Types (Development Focus)
 
