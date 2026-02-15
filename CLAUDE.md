@@ -194,21 +194,31 @@ Before implementing a task, check if relevant plugins are available:
 
 ### Deployment Pipeline
 
-**Simplified Continuous Delivery:**
+**Two Scripts, Two Purposes:**
+
+**ci.sh - Fast Development Feedback** (run constantly during RED → GREEN → REFACTOR)
 ```bash
-# 1. During development (RED → GREEN → REFACTOR)
-./scripts/ci.sh      # Fast local feedback (< 2 min)
-
-# 2. After commit (DEPLOY)
-./scripts/deploy.sh  # Full validation + automatic push (< 5 min)
+./scripts/ci.sh      # < 2 min: vet, tests, race, integration, build
 ```
+- Run this 10-100 times per feature during development
+- Ultra-fast feedback loop
+- Catches bugs immediately
+- NO deployment, NO binary builds, NO E2E tests
 
-**What deploy.sh does automatically:**
-- ✅ Runs full CI (vet, tests, race, integration, security)
-- ✅ Builds binaries for all platforms
-- ✅ Runs E2E smoke tests
-- ✅ **Pushes to GitHub** (no manual gate!)
-- ✅ Triggers GitHub Actions deployment
+**deploy.sh - Full Deployment** (run once after commit, ready to ship)
+```bash
+./scripts/deploy.sh  # < 5 min: ci.sh + binaries + E2E + push
+```
+- Run this ONCE when ready to deploy
+- Runs ci.sh first (validates everything)
+- Builds release binaries (5 platforms)
+- Runs E2E smoke tests on binaries
+- **Automatically pushes to GitHub** (triggers GitHub Actions)
+
+**Why Two Scripts?**
+- **Speed**: ci.sh is 3x faster (no binary builds, no E2E)
+- **Frequency**: You run ci.sh constantly, deploy.sh rarely
+- **Separation of Concerns**: Development vs Deployment
 
 **Gates (must all pass):**
 
@@ -329,7 +339,10 @@ Agents automatically activate at each phase:
 **Code Style:**
 - Follow [Effective Go](https://go.dev/doc/effective_go) conventions
 - Use `gofmt` (enforced by golangci-lint)
-- No comments except for package documentation and complex algorithms
+- **No comments** - code must be self-explanatory through clear naming and structure
+  - Only exception: `#nosec` security suppressions (require explanation)
+  - Package documentation (godoc) is allowed
+  - If you need a comment, refactor the code to be clearer instead
 - Prefer small, focused functions over large monolithic functions
 - Use interfaces for external dependencies (mockable in tests)
 - Avoid unnecessary abstractions (YAGNI - You Ain't Gonna Need It)
