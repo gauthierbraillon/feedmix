@@ -1,0 +1,88 @@
+# Gitleaks configuration for detecting secrets and PII
+# Docs: https://github.com/gitleaks/gitleaks
+
+[extend]
+useDefault = true  # Use built-in rules (API keys, tokens, etc.)
+
+[[rules]]
+id = "email-address"
+description = "Email address (potential PII)"
+regex = '''[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'''
+tags = ["pii", "email"]
+[rules.allowlist]
+  paths = [
+    '''\.md$''',  # Allow emails in documentation
+    '''LICENSE'''  # Allow in license files
+  ]
+  regexes = [
+    '''noreply@''',  # GitHub bot emails
+    '''example\.com''',  # Example emails
+    '''test@''',  # Test emails
+  ]
+
+[[rules]]
+id = "real-name"
+description = "Potential real name in code/comments"
+regex = '''(?i)(author|name|user):\s*[A-Z][a-z]+\s+[A-Z][a-z]+'''
+tags = ["pii", "name"]
+[rules.allowlist]
+  paths = [
+    '''\.md$''',  # Allow names in docs
+    '''LICENSE''',
+    '''AUTHORS''',
+    '''CONTRIBUTORS'''
+  ]
+
+[[rules]]
+id = "home-directory-path"
+description = "Home directory path with username"
+regex = '''/home/[a-z]+/'''
+tags = ["pii", "path"]
+[rules.allowlist]
+  paths = [
+    '''\.md$''',
+    '''CLAUDE\.md'''
+  ]
+  regexes = [
+    '''/home/\$USER/''',  # Generic placeholder
+    '''/home/runner/''',  # GitHub Actions
+  ]
+
+[[rules]]
+id = "ipv4-address"
+description = "IPv4 address (potential PII)"
+regex = '''\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'''
+tags = ["pii", "ip"]
+[rules.allowlist]
+  regexes = [
+    '''127\.0\.0\.1''',  # Localhost
+    '''0\.0\.0\.0''',  # Any address
+    '''192\.168\.''',  # Private network
+    '''10\.''',  # Private network
+    '''172\.1[6-9]\.''',  # Private network
+    '''172\.2[0-9]\.''',  # Private network
+    '''172\.3[0-1]\.''',  # Private network
+  ]
+
+[allowlist]
+  description = "Global allowlist for known safe patterns"
+
+  # Allow example/test tokens
+  regexes = [
+    '''ya29\.abc''',  # Example token in docs
+    '''1//xyz''',  # Example token in docs
+    '''example\.com''',
+    '''test-.*''',
+    '''mock-.*''',
+    '''fake-.*''',
+  ]
+
+  # Allow certain files entirely
+  paths = [
+    '''^\.git/''',
+    '''^\.github/workflows/''',  # Workflows may contain example secrets
+    '''testdata/''',
+    '''_test\.go$''',  # Test files often have fake data
+    '''\.md$''',  # Documentation
+    '''go\.sum$''',  # Go dependencies
+  ]
