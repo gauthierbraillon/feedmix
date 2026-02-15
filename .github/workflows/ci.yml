@@ -188,11 +188,45 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
-      - name: Create and push tag
+      - name: Create tag
         if: steps.version.outputs.should_release == 'true'
         run: |
           NEW_VERSION="${{ steps.version.outputs.new_version }}"
-          git tag -a "$NEW_VERSION" -m "chore(release): $NEW_VERSION [skip ci]"
+          git tag -a "$NEW_VERSION" -m "chore(release): $NEW_VERSION"
           git push origin "$NEW_VERSION"
-          echo "✅ Created and pushed tag: $NEW_VERSION"
-          echo "🚀 Release workflow will be triggered automatically"
+          echo "✅ Created tag: $NEW_VERSION"
+
+      - uses: actions/setup-go@v5
+        if: steps.version.outputs.should_release == 'true'
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Build release binaries
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          mkdir -p dist
+
+          # Build for all platforms
+          for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            GOOS="${platform%/*}"
+            GOARCH="${platform#*/}"
+            output="dist/feedmix-$NEW_VERSION-$GOOS-$GOARCH"
+            [ "$GOOS" = "windows" ] && output="${output}.exe"
+            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$NEW_VERSION" -o "$output" ./cmd/feedmix
+          done
+
+          cd dist && sha256sum feedmix-* > checksums.txt
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          gh release create "$NEW_VERSION" \
+            --title "$NEW_VERSION" \
+            --generate-notes \
+            dist/*
+          echo "🚀 Release $NEW_VERSION created with binaries"

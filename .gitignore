@@ -19,3 +19,7 @@ coverage.html
 *.env
 tokens.json
 *_token.json
+
+# Claude Code local settings
+.claude/*.json
+.claude/projects/
