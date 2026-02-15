@@ -3,21 +3,35 @@ package browser
 
 import (
 	"fmt"
+	"net/url"
 	"os/exec"
 	"runtime"
 )
 
 // Open opens the specified URL in the default browser.
-func Open(url string) error {
+// It validates the URL before passing it to the system browser to prevent command injection.
+func Open(urlString string) error {
+	// Validate URL to prevent command injection (fixes G204/CWE-78)
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Whitelist allowed schemes to prevent malicious URLs
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return fmt.Errorf("unsupported URL scheme: %s (only http and https allowed)", parsedURL.Scheme)
+	}
+
+	// URL is validated, safe to pass to system browser
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.Command("xdg-open", url)
+		cmd = exec.Command("xdg-open", urlString)
 	case "darwin":
-		cmd = exec.Command("open", url)
+		cmd = exec.Command("open", urlString)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", urlString)
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}

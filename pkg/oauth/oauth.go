@@ -25,7 +25,7 @@ var (
 
 type Config struct {
 	ClientID     string
-	ClientSecret string
+	ClientSecret string // #nosec G117 - JSON field for OAuth config, not an exposed secret
 	AuthURL      string
 	TokenURL     string
 	RedirectURL  string
@@ -60,8 +60,8 @@ func YouTubeOAuthConfig(clientID, clientSecret, redirectURL string) Config {
 }
 
 type Token struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`  // #nosec G117 - JSON field for OAuth token, not an exposed secret
+	RefreshToken string `json:"refresh_token"` // #nosec G117 - JSON field for OAuth token, not an exposed secret
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int64  `json:"expires_in"`
 }
