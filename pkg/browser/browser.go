@@ -22,16 +22,15 @@ func Open(urlString string) error {
 		return fmt.Errorf("unsupported URL scheme: %s (only http and https allowed)", parsedURL.Scheme)
 	}
 
-	// URL is validated, safe to pass to system browser
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.Command("xdg-open", urlString)
+		cmd = exec.Command("xdg-open", urlString) // #nosec G204 -- URL validated above
 	case "darwin":
-		cmd = exec.Command("open", urlString)
+		cmd = exec.Command("open", urlString) // #nosec G204 -- URL validated above
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", urlString)
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", urlString) // #nosec G204 -- URL validated above
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}

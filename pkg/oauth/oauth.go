@@ -49,7 +49,7 @@ func (c Config) Validate() error {
 }
 
 func YouTubeOAuthConfig(clientID, clientSecret, redirectURL string) Config {
-	return Config{
+	return Config{ // #nosec G101 -- OAuth URLs are public API endpoints, not hardcoded credentials
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		AuthURL:      "https://accounts.google.com/o/oauth2/v2/auth",
