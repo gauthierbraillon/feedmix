@@ -194,10 +194,21 @@ Before implementing a task, check if relevant plugins are available:
 
 ### Deployment Pipeline
 
+**Simplified Continuous Delivery:**
 ```bash
-./scripts/ci.sh      # Local CI (fast feedback)
-git push             # Triggers GitHub Actions (full validation + deploy)
+# 1. During development (RED → GREEN → REFACTOR)
+./scripts/ci.sh      # Fast local feedback (< 2 min)
+
+# 2. After commit (DEPLOY)
+./scripts/deploy.sh  # Full validation + automatic push (< 5 min)
 ```
+
+**What deploy.sh does automatically:**
+- ✅ Runs full CI (vet, tests, race, integration, security)
+- ✅ Builds binaries for all platforms
+- ✅ Runs E2E smoke tests
+- ✅ **Pushes to GitHub** (no manual gate!)
+- ✅ Triggers GitHub Actions deployment
 
 **Gates (must all pass):**
 
@@ -233,7 +244,7 @@ git push             # Triggers GitHub Actions (full validation + deploy)
 
 **If you skip the workflow, you're doing it wrong.** The workflow ensures quality, prevents bugs, and maintains continuous delivery discipline.
 
-**TDD Cycle (RED → GREEN → REFACTOR → CI → COMMIT → DEPLOY):**
+**TDD Cycle (RED → GREEN → REFACTOR → COMMIT → DEPLOY):**
 
 Agents automatically activate at each phase:
 
@@ -278,15 +289,7 @@ Agents automatically activate at each phase:
    go test ./...  # All unit + contract tests must pass
    ```
 
-4. **CI phase** - Local CI verification (Developer + SRE)
-   - **Run full local CI pipeline**
-   ```bash
-   ./scripts/ci.sh  # Vet + race detector + integration + security + build + verify
-   ```
-   - **All gates must pass** before committing
-   - If any gate fails, return to RED/GREEN/REFACTOR as needed
-
-5. **COMMIT phase** - Commit changes with conventional commit message (Developer)
+4. **COMMIT phase** - Commit changes with conventional commit message (Developer)
    - **Commit changes** with descriptive conventional commit message
    ```bash
    git add -A && git commit -m "feat: add OAuth token refresh logic"
@@ -298,14 +301,21 @@ Agents automatically activate at each phase:
    - **Conventional commit types**: feat, fix, refactor, test, docs, chore, ci, perf
    - **Message format**: `type: description` (lowercase, no period, imperative mood)
 
-6. **DEPLOY phase** - Push and monitor (SRE)
-   - **Push to GitHub** - Triggers GitHub Actions
+5. **DEPLOY phase** - Automatic CD pipeline (SRE)
+   - **Run deploy script** - Validates everything and auto-deploys
    ```bash
-   git push
+   ./scripts/deploy.sh
    ```
-   - **GitHub Actions runs full validation** (all local CI + linting + security + build + release)
-   - **Smoke tests pass**: Deployment successful
-   - **Smoke tests fail**: ROLLBACK immediately (delete release, revert tag, notify team)
+   - **What happens automatically**:
+     1. Checks for uncommitted changes (fails if found - commit first!)
+     2. Runs full CI pipeline (vet, tests, race detector, integration, security, build)
+     3. Builds release binaries for all platforms
+     4. Runs E2E smoke tests on built binaries
+     5. **Automatically pushes to GitHub** (if all validations pass)
+     6. GitHub Actions deploys (full validation, release creation, post-deploy smoke tests)
+     7. If smoke tests fail → ROLLBACK immediately
+   - **No manual gates**: If tests pass, code deploys. Period.
+   - **Fast feedback**: Know within minutes if deployment succeeds
    - **Update .claude/memory/MEMORY.md** with lessons learned (Developer)
 
 **Why This Workflow is NON-NEGOTIABLE:**
