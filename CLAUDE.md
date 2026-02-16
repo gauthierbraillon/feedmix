@@ -24,18 +24,30 @@ Feedmix is a CLI tool for aggregating YouTube subscriptions into a terminal feed
 
 ### ATDD (Acceptance Test Driven Development)
 
-**Philosophy:**
-- Tests ARE the acceptance criteria and testable requirements
-- Write test as specification first, then implement to pass the test
-- No separate requirements document - tests document requirements
-- Tests describe observable behavior, not internal design
+**ATDD IS TDD** - same RED → GREEN → REFACTOR cycle, different test focus.
 
-**Workflow:**
-1. Write test as executable specification (RED)
-2. Implement minimum code to pass test (GREEN)
-3. Refactor without changing behavior (REFACTOR)
-4. Run CI validation (CI)
-5. Deploy (DEPLOY)
+**The ONLY difference:**
+- **ATDD tests** describe WHAT the system should do (acceptance criteria, observable behavior)
+- **Classic TDD tests** often describe HOW the system works (class structure, object interactions)
+
+**ATDD workflow (same as TDD):**
+1. **RED**: Write acceptance test first (test IS the requirement)
+2. **GREEN**: Implement minimum code to pass
+3. **REFACTOR**: Clean up code and tests
+4. **DEPLOY**: Ship it
+
+**No separate requirements document. No waterfall. Just TDD with acceptance-focused tests.**
+
+## Multi-Perspective Analysis
+
+For new features or significant changes, analyze from multiple angles before implementing:
+- **Requirements**: What problem does this solve? What are the acceptance criteria?
+- **User Experience**: How will users interact with this CLI tool? Is it intuitive?
+- **Technical Design**: What's the simplest implementation approach? Which Go patterns apply?
+- **Security**: What are the risks? OAuth vulnerabilities? Input validation needs?
+- **Performance**: Will this scale? Are there concurrent access concerns?
+
+Present a synthesis, then implement using the TDD workflow.
 
 ### Test Types (Development Focus)
 
@@ -186,14 +198,14 @@ Before implementing a task, check if relevant plugins are available:
 
 **Two Scripts, Two Purposes:**
 
-**ci.sh - Fast Development Feedback** (run constantly during RED → GREEN → REFACTOR)
+**ci.sh - Fast Development Feedback** (run during RED → GREEN → REFACTOR cycle)
 ```bash
 ./scripts/ci.sh      # < 2 min: vet, tests, race, integration, build
 ```
-- Run this 10-100 times per feature during development
-- Ultra-fast feedback loop
+- Run frequently during development for fast feedback
+- Ultra-fast feedback loop (under 2 minutes)
 - Catches bugs immediately
-- NO deployment, NO binary builds, NO E2E tests
+- NO deployment, NO multi-platform binary builds, NO E2E tests
 
 **deploy.sh - Full Deployment** (run once after commit, ready to ship)
 ```bash
@@ -285,12 +297,16 @@ Agents automatically activate at each phase:
    - **Refactor tests if needed**: Improve test readability, reduce test duplication
    - **Run ALL tests** to ensure refactoring didn't break anything
    - Tests stay sociable - no new mocks of our own code
+   - **Example refactoring**:
+     - Before: `if token.ExpiresAt.Before(time.Now())` repeated in multiple places
+     - After: `func (t *Token) IsExpired() bool { return t.ExpiresAt.Before(time.Now()) }`
    ```bash
    go test ./...  # All unit + contract tests must pass
    ```
 
 4. **COMMIT phase** - Commit changes with conventional commit message (Developer)
-   - **Commit changes** with descriptive conventional commit message
+   - **CRITICAL: Commit changes FIRST** - Deploy script requires clean git state
+   - **Commit with descriptive conventional commit message**:
    ```bash
    git add -A && git commit -m "feat: add OAuth token refresh logic"
    git add -A && git commit -m "fix: prevent race condition in token storage"
@@ -309,14 +325,15 @@ Agents automatically activate at each phase:
    - **What happens automatically**:
      1. Checks for uncommitted changes (fails if found - commit first!)
      2. Runs full CI pipeline (vet, tests, race detector, integration, security, build)
-     3. Builds release binaries for all platforms
+     3. Builds release binaries for all platforms (Linux, macOS, Windows)
      4. Runs E2E smoke tests on built binaries
      5. **Automatically pushes to GitHub** (if all validations pass)
-     6. GitHub Actions deploys (full validation, release creation, post-deploy smoke tests)
+     6. GitHub Actions runs (full validation, semantic release, binary deployment)
      7. If smoke tests fail → ROLLBACK immediately
    - **No manual gates**: If tests pass, code deploys. Period.
    - **Fast feedback**: Know within minutes if deployment succeeds
-   - **Update .claude/memory/MEMORY.md** with lessons learned (Developer)
+   - **NEVER manual git push** - deploy.sh handles push after all tests pass
+   - Update .claude/memory/MEMORY.md with lessons learned (Developer)
 
 **Why This Workflow is NON-NEGOTIABLE:**
 - **Prevents bugs**: Tests catch issues before they reach production
@@ -454,12 +471,15 @@ scripts/
    ```bash
    ./scripts/ci.sh
    ```
-6. **Deploy** - Commit, push, monitor (SRE)
+6. **Commit** - Commit with conventional commit message (Developer)
    ```bash
    git add -A && git commit -m "fix: handle expired refresh tokens"
-   git push
    ```
-7. **Learn** - Update `.claude/memory/MEMORY.md` with lesson (Developer)
+7. **Deploy** - Run deploy script (SRE)
+   ```bash
+   ./scripts/deploy.sh  # Validates, builds, tests, and auto-pushes
+   ```
+8. **Learn** - Update `.claude/memory/MEMORY.md` with lesson (Developer)
 
 **Design new feature:** (Product Manager + Architect + Developer + Security Engineer + SRE)
 1. **Define requirements** - Break down into acceptance criteria (Product Manager)

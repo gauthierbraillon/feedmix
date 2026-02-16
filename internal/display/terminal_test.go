@@ -8,80 +8,135 @@ import (
 	"github.com/gauthierbraillon/feedmix/internal/aggregator"
 )
 
-func TestFormatFeedItem(t *testing.T) {
+func TestAC300_TerminalFeed_ShowsVideoTitle(t *testing.T) {
 	item := aggregator.FeedItem{
 		ID:          "test123",
 		Source:      aggregator.SourceYouTube,
 		Type:        aggregator.ItemTypeVideo,
-		Title:       "Test Video Title",
-		Author:      "Test Author",
+		Title:       "How to Build CLI Tools in Go",
+		Author:      "Tech Channel",
 		URL:         "https://youtube.com/watch?v=test123",
-		PublishedAt: time.Now().Add(-2 * time.Hour),
-		Engagement:  aggregator.Engagement{Views: 1000, Likes: 50},
+		PublishedAt: time.Now(),
 	}
 
 	output := NewTerminalFormatter().FormatItem(item)
 
-	if !strings.Contains(output, "Test Video Title") {
-		t.Error("should contain title")
-	}
-	if !strings.Contains(strings.ToLower(output), "youtube") {
-		t.Error("should indicate source")
-	}
-	if !strings.Contains(output, "Test Author") {
-		t.Error("should contain author")
+	if !strings.Contains(output, "How to Build CLI Tools in Go") {
+		t.Error("user should see video title in terminal output")
 	}
 }
 
-func TestFormatTimestamp(t *testing.T) {
-	f := NewTerminalFormatter()
-	tests := []struct {
-		name, contains string
-		time           time.Time
-	}{
-		{"minutes ago", "min", time.Now().Add(-30 * time.Minute)},
-		{"hours ago", "hour", time.Now().Add(-3 * time.Hour)},
-		{"days ago", "day", time.Now().Add(-48 * time.Hour)},
+func TestAC300_TerminalFeed_ShowsAuthorName(t *testing.T) {
+	item := aggregator.FeedItem{
+		Title:       "Test Video",
+		Author:      "CodeMaster",
+		Source:      aggregator.SourceYouTube,
+		PublishedAt: time.Now(),
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if !strings.Contains(strings.ToLower(f.FormatTimestamp(tt.time)), tt.contains) {
-				t.Errorf("should contain %q", tt.contains)
+	output := NewTerminalFormatter().FormatItem(item)
+
+	if !strings.Contains(output, "CodeMaster") {
+		t.Error("user should see author name in terminal output")
+	}
+}
+
+func TestAC300_TerminalFeed_ShowsSourceIndicator(t *testing.T) {
+	item := aggregator.FeedItem{
+		Title:       "Test Video",
+		Source:      aggregator.SourceYouTube,
+		PublishedAt: time.Now(),
+	}
+
+	output := NewTerminalFormatter().FormatItem(item)
+
+	if !strings.Contains(strings.ToLower(output), "youtube") {
+		t.Error("user should see content source (YouTube) in terminal output")
+	}
+}
+
+func TestAC301_TerminalFeed_ShowsRelativeTimestamps(t *testing.T) {
+	formatter := NewTerminalFormatter()
+	testCases := []struct {
+		name      string
+		timestamp time.Time
+		contains  string
+	}{
+		{"recent minutes", time.Now().Add(-30 * time.Minute), "min"},
+		{"recent hours", time.Now().Add(-3 * time.Hour), "hour"},
+		{"recent days", time.Now().Add(-48 * time.Hour), "day"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output := formatter.FormatTimestamp(tc.timestamp)
+			if !strings.Contains(strings.ToLower(output), tc.contains) {
+				t.Errorf("user should see relative time (%s) for %s content", tc.contains, tc.name)
 			}
 		})
 	}
 }
 
-func TestTruncateText(t *testing.T) {
-	f := NewTerminalFormatter()
-
-	short := f.TruncateText("Hello", 10)
-	if short != "Hello" {
-		t.Error("short text should be unchanged")
+func TestAC302_TerminalFeed_ShowsClickableURLs(t *testing.T) {
+	item := aggregator.FeedItem{
+		Title:       "Test Video",
+		URL:         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		Source:      aggregator.SourceYouTube,
+		PublishedAt: time.Now(),
 	}
 
-	long := f.TruncateText("This is a very long text", 10)
-	if len(long) > 10 || !strings.HasSuffix(long, "...") {
-		t.Error("long text should be truncated with ...")
+	output := NewTerminalFormatter().FormatItem(item)
+
+	if !strings.Contains(output, "https://www.youtube.com/watch?v=dQw4w9WgXcQ") {
+		t.Error("user should see clickable video URL in terminal output")
 	}
 }
 
-func TestFormatFeed(t *testing.T) {
+func TestAC303_TerminalFeed_TruncatesLongText(t *testing.T) {
+	formatter := NewTerminalFormatter()
+	longText := "This is a very long text that should be truncated because it exceeds the maximum length"
+
+	truncated := formatter.TruncateText(longText, 20)
+
+	if len(truncated) > 20 {
+		t.Errorf("user should see truncated text (max 20 chars), got %d chars", len(truncated))
+	}
+	if !strings.HasSuffix(truncated, "...") {
+		t.Error("user should see ellipsis indicating text was truncated")
+	}
+}
+
+func TestAC303_TerminalFeed_PreservesShortText(t *testing.T) {
+	formatter := NewTerminalFormatter()
+	shortText := "Short"
+
+	output := formatter.TruncateText(shortText, 20)
+
+	if output != "Short" {
+		t.Errorf("user should see full text when under limit, got: %s", output)
+	}
+}
+
+func TestAC304_TerminalFeed_ShowsMultipleItems(t *testing.T) {
 	items := []aggregator.FeedItem{
-		{ID: "1", Source: aggregator.SourceYouTube, Title: "First", Author: "A", PublishedAt: time.Now()},
-		{ID: "2", Source: aggregator.SourceYouTube, Title: "Second", Author: "B", PublishedAt: time.Now()},
+		{ID: "1", Title: "First Video", Author: "Author A", Source: aggregator.SourceYouTube, PublishedAt: time.Now()},
+		{ID: "2", Title: "Second Video", Author: "Author B", Source: aggregator.SourceYouTube, PublishedAt: time.Now()},
 	}
 
 	output := NewTerminalFormatter().FormatFeed(items)
-	if !strings.Contains(output, "First") || !strings.Contains(output, "Second") {
-		t.Error("should contain both items")
+
+	if !strings.Contains(output, "First Video") {
+		t.Error("user should see first video in feed")
+	}
+	if !strings.Contains(output, "Second Video") {
+		t.Error("user should see second video in feed")
 	}
 }
 
-func TestFormatFeed_Empty(t *testing.T) {
+func TestAC305_TerminalFeed_ShowsEmptyFeedMessage(t *testing.T) {
 	output := NewTerminalFormatter().FormatFeed(nil)
+
 	if !strings.Contains(strings.ToLower(output), "no") {
-		t.Error("should indicate no items")
+		t.Error("user should see message indicating no content available")
 	}
 }
