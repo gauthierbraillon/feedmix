@@ -230,7 +230,7 @@ func (c *Client) doRequest(ctx context.Context, url string) ([]byte, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API error: status %d", resp.StatusCode)
+		return nil, c.handleAPIError(resp.StatusCode)
 	}
 
 	return body, nil
@@ -324,4 +324,21 @@ type videoStats struct {
 	viewCount int64
 	likeCount int64
 	duration  string
+}
+
+func (c *Client) handleAPIError(statusCode int) error {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		return fmt.Errorf("YouTube API authentication failed - please run 'feedmix auth' to re-authenticate")
+	case http.StatusForbidden:
+		return fmt.Errorf("YouTube API access denied - check your OAuth permissions")
+	case http.StatusTooManyRequests:
+		return fmt.Errorf("YouTube API rate limit exceeded - please try again later")
+	case http.StatusServiceUnavailable:
+		return fmt.Errorf("YouTube API temporarily unavailable - please try again in a few minutes")
+	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusGatewayTimeout:
+		return fmt.Errorf("YouTube API server error - please try again later")
+	default:
+		return fmt.Errorf("YouTube API error (status %d) - please try again", statusCode)
+	}
 }
