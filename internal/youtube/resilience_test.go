@@ -119,7 +119,7 @@ func TestAC402_YouTubeAPI_HandlesMissingOptionalFields(t *testing.T) {
 func TestAC403_YouTubeAPI_ReturnsUserFriendlyErrorOnServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte("Service temporarily unavailable"))
+		_, _ = w.Write([]byte("Service temporarily unavailable"))
 	}))
 	defer server.Close()
 
@@ -201,7 +201,7 @@ func TestAC405_YouTubeAPI_HandlesRateLimitGracefully(t *testing.T) {
 func TestAC406_YouTubeAPI_HandlesMalformedJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"invalid": json}`))
+		_, _ = w.Write([]byte(`{"invalid": json}`))
 	}))
 	defer server.Close()
 
@@ -259,7 +259,7 @@ func TestAC407_YouTubeAPI_HandlesNullFields(t *testing.T) {
 func TestAC408_YouTubeAPI_HandlesPartialResponseDuringNetworkIssue(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"items": [{"snippet": {"resourceId": {"channelId": "UC123"}, "title": "Test`))
+		_, _ = w.Write([]byte(`{"items": [{"snippet": {"resourceId": {"channelId": "UC123"}, "title": "Test`))
 	}))
 	defer server.Close()
 
