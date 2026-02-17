@@ -54,7 +54,7 @@ func TestAC101_CallbackServer_RejectsInvalidStateParameter(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		resp, _ := http.Get("http://localhost:18087/callback?code=attacker-code&state=attacker-state")
 		if resp != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}()
 
@@ -73,7 +73,7 @@ func TestAC101_CallbackServer_AcceptsMatchingStateParameter(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		resp, _ := http.Get("http://localhost:18088/callback?code=auth-code&state=correct-state-abc")
 		if resp != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}()
 
@@ -89,7 +89,7 @@ func TestAC101_CallbackServer_AcceptsMatchingStateParameter(t *testing.T) {
 
 func TestAC102_TokenStorage_PersistsTokensBetweenSessions(t *testing.T) {
 	configDir, _ := os.MkdirTemp("", "oauth-test")
-	defer os.RemoveAll(configDir)
+	defer func() { _ = os.RemoveAll(configDir) }()
 
 	storage := NewTokenStorage(configDir)
 	userToken := &Token{
@@ -115,7 +115,7 @@ func TestAC102_TokenStorage_PersistsTokensBetweenSessions(t *testing.T) {
 
 func TestAC102_TokenStorage_ReturnsErrorWhenUserNotAuthenticated(t *testing.T) {
 	configDir, _ := os.MkdirTemp("", "oauth-test")
-	defer os.RemoveAll(configDir)
+	defer func() { _ = os.RemoveAll(configDir) }()
 
 	_, err := NewTokenStorage(configDir).Load("youtube")
 

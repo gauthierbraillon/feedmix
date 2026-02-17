@@ -123,7 +123,7 @@ func (f *Flow) ExchangeCode(ctx context.Context, code string) (*Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -186,7 +186,7 @@ func (s *CallbackServer) WaitForCallback(ctx context.Context, expectedState stri
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() { _ = server.Serve(listener) }()
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
