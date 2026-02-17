@@ -1,0 +1,61 @@
+# feedmix
+
+> Aggregate your YouTube subscriptions into a lightweight terminal feed. A privacy-focused RSS alternative for developers who prefer the command line.
+
+## What it does
+
+feedmix is a CLI tool that:
+- Authenticates with YouTube via OAuth 2.0 (browser-based, tokens stored locally)
+- Fetches recent videos from all your YouTube subscriptions
+- Displays them as a clean, scrollable terminal feed with titles, channels, timestamps, and clickable URLs
+
+## Who it is for
+
+- Developers who live in the terminal and want YouTube subscription updates without opening a browser
+- Privacy-conscious users who want a lightweight RSS-like experience without third-party services
+- Users who want a single binary that runs anywhere Go runs
+
+## Install
+
+```bash
+go install github.com/gauthierbraillon/feedmix/cmd/feedmix@latest
+```
+
+## Quick start
+
+```bash
+# 1. Set credentials (from Google Cloud Console)
+export FEEDMIX_YOUTUBE_CLIENT_ID="your-client-id"
+export FEEDMIX_YOUTUBE_CLIENT_SECRET="your-client-secret"
+
+# 2. Authenticate
+feedmix auth
+
+# 3. View your feed
+feedmix feed
+feedmix feed --limit 10
+```
+
+## Key facts
+
+- Language: Go
+- License: MIT
+- Repository: https://github.com/gauthierbraillon/feedmix
+- Single static binary, no runtime dependencies
+- OAuth tokens stored locally at ~/.config/feedmix/ (never sent anywhere)
+- Supports Linux, macOS, Windows (amd64 + arm64)
+- Actively maintained with automated semantic releases
+
+## Documentation
+
+- README: https://github.com/gauthierbraillon/feedmix/blob/main/README.md
+- Architecture: https://github.com/gauthierbraillon/feedmix/blob/main/ARCHITECTURE.md
+- Changelog: https://github.com/gauthierbraillon/feedmix/blob/main/CHANGELOG.md
+- Contributing: https://github.com/gauthierbraillon/feedmix/blob/main/CONTRIBUTING.md
+- Security: https://github.com/gauthierbraillon/feedmix/blob/main/SECURITY.md
+
+## Related concepts
+
+YouTube RSS alternative, YouTube subscription aggregator, terminal YouTube client,
+CLI feed reader, YouTube to RSS, command-line YouTube, Go YouTube client,
+privacy YouTube reader, offline YouTube subscriptions, developer YouTube tool
