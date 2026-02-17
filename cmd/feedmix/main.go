@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -146,10 +147,11 @@ func newFeedCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			storage := oauth.NewTokenStorage(getConfigDir())
+			configDir := getConfigDir()
+			storage := oauth.NewTokenStorage(configDir)
 			token, err := storage.Load("youtube")
 			if err != nil {
-				return fmt.Errorf("not authenticated (run 'feedmix auth')")
+				return fmt.Errorf("not authenticated: run 'feedmix auth' (config: %s)", configDir)
 			}
 
 			opts := []youtube.ClientOption{}
@@ -164,35 +166,42 @@ func newFeedCmd() *cobra.Command {
 			}
 
 			agg := aggregator.New()
+			var mu sync.Mutex
+			var wg sync.WaitGroup
 			for _, sub := range subs {
-				// Fetch recent videos from each subscribed channel
-				videos, err := client.FetchRecentVideos(ctx, sub.ChannelID, 5)
-				if err != nil {
-					// Log error but continue with other channels
-					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to fetch videos from %s: %v\n", sub.ChannelTitle, err)
-					continue
-				}
-
-				// Add each video as a feed item
-				for _, video := range videos {
-					agg.AddItems([]aggregator.FeedItem{{
-						ID:          video.ID,
-						Source:      aggregator.SourceYouTube,
-						Type:        aggregator.ItemTypeVideo,
-						Title:       video.Title,
-						Description: video.Description,
-						Author:      video.ChannelTitle,
-						AuthorID:    video.ChannelID,
-						URL:         video.URL,
-						Thumbnail:   video.Thumbnail,
-						PublishedAt: video.PublishedAt,
-						Engagement: aggregator.Engagement{
-							Views: video.ViewCount,
-							Likes: video.LikeCount,
-						},
-					}})
-				}
+				wg.Add(1)
+				go func(sub youtube.Subscription) {
+					defer wg.Done()
+					videos, err := client.FetchRecentVideos(ctx, sub.ChannelID, 5)
+					if err != nil {
+						fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to fetch videos from %s: %v\n", sub.ChannelTitle, err)
+						return
+					}
+					items := make([]aggregator.FeedItem, 0, len(videos))
+					for _, video := range videos {
+						items = append(items, aggregator.FeedItem{
+							ID:          video.ID,
+							Source:      aggregator.SourceYouTube,
+							Type:        aggregator.ItemTypeVideo,
+							Title:       video.Title,
+							Description: video.Description,
+							Author:      video.ChannelTitle,
+							AuthorID:    video.ChannelID,
+							URL:         video.URL,
+							Thumbnail:   video.Thumbnail,
+							PublishedAt: video.PublishedAt,
+							Engagement: aggregator.Engagement{
+								Views: video.ViewCount,
+								Likes: video.LikeCount,
+							},
+						})
+					}
+					mu.Lock()
+					agg.AddItems(items)
+					mu.Unlock()
+				}(sub)
 			}
+			wg.Wait()
 
 			items := agg.GetFeed(aggregator.FeedOptions{Limit: limit})
 			formatter := display.NewTerminalFormatter()

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gauthierbraillon/feedmix/pkg/oauth"
@@ -95,8 +97,13 @@ func (c *Client) FetchSubscriptions(ctx context.Context) ([]Subscription, error)
 
 // FetchRecentVideos retrieves recent videos from a channel.
 func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit int) ([]Video, error) {
-	searchURL := fmt.Sprintf("%s/youtube/v3/search?part=snippet&channelId=%s&maxResults=%d&order=date&type=video",
-		c.baseURL, channelID, limit)
+	params := url.Values{}
+	params.Set("part", "snippet")
+	params.Set("channelId", channelID)
+	params.Set("maxResults", strconv.Itoa(limit))
+	params.Set("order", "date")
+	params.Set("type", "video")
+	searchURL := fmt.Sprintf("%s/youtube/v3/search?%s", c.baseURL, params.Encode())
 
 	body, err := c.doRequest(ctx, searchURL)
 	if err != nil {
@@ -117,8 +124,10 @@ func (c *Client) FetchRecentVideos(ctx context.Context, channelID string, limit 
 		videoIDs = append(videoIDs, item.ID.VideoID)
 	}
 
-	videosURL := fmt.Sprintf("%s/youtube/v3/videos?part=statistics,contentDetails&id=%s",
-		c.baseURL, joinIDs(videoIDs))
+	vParams := url.Values{}
+	vParams.Set("part", "statistics,contentDetails")
+	vParams.Set("id", strings.Join(videoIDs, ","))
+	videosURL := fmt.Sprintf("%s/youtube/v3/videos?%s", c.baseURL, vParams.Encode())
 
 	body, err = c.doRequest(ctx, videosURL)
 	if err != nil {
@@ -234,17 +243,6 @@ func (c *Client) doRequest(ctx context.Context, url string) ([]byte, error) {
 	}
 
 	return body, nil
-}
-
-func joinIDs(ids []string) string {
-	result := ""
-	for i, id := range ids {
-		if i > 0 {
-			result += ","
-		}
-		result += id
-	}
-	return result
 }
 
 // API response types (private - implementation detail)

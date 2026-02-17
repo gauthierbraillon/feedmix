@@ -69,6 +69,36 @@ func TestDiscoverability_LLMSTxtHasProjectSummary(t *testing.T) {
 
 var pinnedSHA = regexp.MustCompile(`@[0-9a-f]{40}`)
 
+func TestPipeline_GolangciLintVersionIsPinned(t *testing.T) {
+	data, err := os.ReadFile("../../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "version: latest") {
+		t.Error("ci.yml: golangci-lint 'version: latest' must be pinned to a specific version")
+	}
+}
+
+func TestPipeline_SemanticReleaseOnlyCreatesTag(t *testing.T) {
+	data, err := os.ReadFile("../../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "gh release create") {
+		t.Error("ci.yml: semantic-release must only push a tag; release creation belongs in release.yml")
+	}
+}
+
+func TestPipeline_ReleaseIsPublishedOnlyAfterE2E(t *testing.T) {
+	data, err := os.ReadFile("../../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "draft: true") {
+		t.Error("release.yml: release must be created as a draft and published only after E2E passes")
+	}
+}
+
 func TestWorkflowActions_PinnedToCommitSHA(t *testing.T) {
 	workflows, err := filepath.Glob("../../.github/workflows/*.yml")
 	if err != nil {

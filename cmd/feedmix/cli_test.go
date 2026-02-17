@@ -109,6 +109,20 @@ func TestAuthCommand_RequiresCredentials(t *testing.T) {
 	}
 }
 
+func TestFeedCommand_NotAuthenticatedErrorShowsConfigPath(t *testing.T) {
+	configDir, _ := os.MkdirTemp("", "feedmix-config")
+	defer os.RemoveAll(configDir)
+
+	_, stderr, exitCode := runCLI(t, map[string]string{"FEEDMIX_CONFIG_DIR": configDir}, "feed")
+
+	if exitCode == 0 {
+		t.Fatal("feed should fail when no token exists")
+	}
+	if !strings.Contains(stderr, configDir) {
+		t.Errorf("error should include config path so user knows where to look, got: %s", stderr)
+	}
+}
+
 func TestFeedCommand_DisplaysItems(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -144,6 +158,58 @@ func TestFeedCommand_DisplaysItems(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "Test Channel") {
 		t.Errorf("should show feed item, got: %s", stdout)
+	}
+}
+
+func TestFeedCommand_AggregatesMultipleChannels(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if strings.Contains(r.URL.Path, "/subscriptions") {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"items": []map[string]interface{}{
+					{"snippet": map[string]interface{}{"resourceId": map[string]interface{}{"channelId": "UC_channel_A"}, "title": "Channel A", "thumbnails": map[string]interface{}{"default": map[string]interface{}{"url": ""}}, "publishedAt": "2024-01-01T00:00:00Z"}},
+					{"snippet": map[string]interface{}{"resourceId": map[string]interface{}{"channelId": "UC_channel_B"}, "title": "Channel B", "thumbnails": map[string]interface{}{"default": map[string]interface{}{"url": ""}}, "publishedAt": "2024-01-01T00:00:00Z"}},
+				},
+			})
+			return
+		}
+
+		channelID := r.URL.Query().Get("channelId")
+		videoID := "vid_a"
+		title := "Video from Channel A"
+		if channelID == "UC_channel_B" {
+			videoID = "vid_b"
+			title = "Video from Channel B"
+		}
+
+		if strings.Contains(r.URL.Path, "/search") {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"items": []map[string]interface{}{
+					{"id": map[string]interface{}{"videoId": videoID}, "snippet": map[string]interface{}{"title": title, "channelId": channelID, "channelTitle": "Ch", "publishedAt": "2024-01-15T00:00:00Z", "thumbnails": map[string]interface{}{"default": map[string]interface{}{"url": ""}}}},
+				},
+			})
+			return
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
+	}))
+	defer server.Close()
+
+	configDir, _ := os.MkdirTemp("", "feedmix-config")
+	defer os.RemoveAll(configDir)
+	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(`{"access_token":"tok","token_type":"Bearer"}`), 0600)
+
+	stdout, _, exitCode := runCLI(t, map[string]string{"FEEDMIX_CONFIG_DIR": configDir, "FEEDMIX_API_URL": server.URL}, "feed")
+
+	if exitCode != 0 {
+		t.Fatalf("feed should succeed with multiple channels, exit code %d\noutput: %s", exitCode, stdout)
+	}
+	if !strings.Contains(stdout, "Video from Channel A") {
+		t.Errorf("feed should include videos from Channel A, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Video from Channel B") {
+		t.Errorf("feed should include videos from Channel B, got: %s", stdout)
 	}
 }
 

@@ -3,9 +3,12 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -139,6 +142,26 @@ func TestAC103_OAuthConfig_RejectsInvalidConfiguration(t *testing.T) {
 				t.Errorf("%s: user should get error message to fix OAuth setup", tc.name)
 			}
 		})
+	}
+}
+
+func TestCallbackServer_ErrorIncludesPort(t *testing.T) {
+	// Bind the port first so starting the callback server fails
+	port := 18099
+	blocker, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		t.Skipf("port %d unavailable for test setup: %v", port, err)
+	}
+	defer blocker.Close()
+
+	server := NewCallbackServer(port)
+	_, err = server.WaitForCallback(context.Background(), "state", time.Second)
+
+	if err == nil {
+		t.Fatal("expected error when port is already in use")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("%d", port)) {
+		t.Errorf("error message should include the port number (%d) to help diagnose the conflict, got: %v", port, err)
 	}
 }
 

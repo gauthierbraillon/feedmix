@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gauthierbraillon/feedmix/internal/aggregator"
 )
@@ -130,6 +131,24 @@ func TestAC304_TerminalFeed_ShowsMultipleItems(t *testing.T) {
 	}
 	if !strings.Contains(output, "Second Video") {
 		t.Error("user should see second video in feed")
+	}
+}
+
+func TestAC303_TerminalFeed_TruncatesUTF8Safely(t *testing.T) {
+	// "日本語テスト" = 6 runes; byte-slicing at position 5 splits a multi-byte char
+	result := NewTerminalFormatter().TruncateText("日本語テスト", 5)
+
+	if !utf8.ValidString(result) {
+		t.Error("TruncateText must not corrupt multi-byte UTF-8 characters at the truncation boundary")
+	}
+}
+
+func TestAC301_TerminalFeed_ShowsReasonableTimeForZeroTimestamp(t *testing.T) {
+	// A zero time.Time (unparsed date) must not produce "482473 hours ago"
+	output := NewTerminalFormatter().FormatTimestamp(time.Time{})
+
+	if strings.Contains(output, "ago") && !strings.Contains(output, "year") {
+		t.Errorf("zero timestamp should show a date, not a relative duration: %s", output)
 	}
 }
 

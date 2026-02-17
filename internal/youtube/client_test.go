@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -323,5 +324,25 @@ func TestClient_Timeout(t *testing.T) {
 
 	if ctx.Err() != context.DeadlineExceeded {
 		t.Errorf("expected DeadlineExceeded, got %v", ctx.Err())
+	}
+}
+
+func TestClient_FetchRecentVideos_URLEncodesChannelID(t *testing.T) {
+	var capturedURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedURL = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
+	}))
+	defer server.Close()
+
+	token := &oauth.Token{AccessToken: "test-token", TokenType: "Bearer"}
+	client := NewClient(token, WithBaseURL(server.URL))
+
+	// Channel ID with characters that require URL encoding
+	_, _ = client.FetchRecentVideos(context.Background(), "UC+special/id", 5)
+
+	if strings.Contains(capturedURL, "UC+special/id") {
+		t.Error("channel ID must be URL-encoded in the query string to prevent parameter injection")
 	}
 }

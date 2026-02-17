@@ -37,7 +37,7 @@ if command -v govulncheck &>/dev/null; then
     govulncheck ./... || fail "Vulnerabilities found"
     success "Passed"
 else
-    echo "  Skipped (install: go install golang.org/x/vuln/cmd/govulncheck@latest)"
+    echo "  Skipped (install: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4)"
 fi
 
 step "Build..."

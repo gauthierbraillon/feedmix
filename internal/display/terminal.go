@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gauthierbraillon/feedmix/internal/aggregator"
 )
@@ -101,13 +102,14 @@ func pluralize(n int, unit string) string {
 	return fmt.Sprintf("%d %ss ago", n, unit)
 }
 
-// TruncateText truncates text to maxLen, adding "..." if truncated.
+// TruncateText truncates text to maxLen runes, adding "..." if truncated.
 func (f *TerminalFormatter) TruncateText(text string, maxLen int) string {
-	if len(text) <= maxLen {
+	if utf8.RuneCountInString(text) <= maxLen {
 		return text
 	}
 	if maxLen <= 3 {
 		return "..."
 	}
-	return text[:maxLen-3] + "..."
+	runes := []rune(text)
+	return string(runes[:maxLen-3]) + "..."
 }
