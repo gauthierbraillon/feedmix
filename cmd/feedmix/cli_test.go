@@ -111,7 +111,7 @@ func TestAuthCommand_RequiresCredentials(t *testing.T) {
 
 func TestFeedCommand_NotAuthenticatedErrorShowsConfigPath(t *testing.T) {
 	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer os.RemoveAll(configDir)
+	defer func() { _ = os.RemoveAll(configDir) }()
 
 	_, stderr, exitCode := runCLI(t, map[string]string{"FEEDMIX_CONFIG_DIR": configDir}, "feed")
 
@@ -142,7 +142,7 @@ func TestFeedCommand_DisplaysItems(t *testing.T) {
 	defer server.Close()
 
 	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer os.RemoveAll(configDir)
+	defer func() { _ = os.RemoveAll(configDir) }()
 
 	tokenData := `{"access_token":"test-token","token_type":"Bearer"}`
 	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(tokenData), 0600)
@@ -197,7 +197,7 @@ func TestFeedCommand_AggregatesMultipleChannels(t *testing.T) {
 	defer server.Close()
 
 	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer os.RemoveAll(configDir)
+	defer func() { _ = os.RemoveAll(configDir) }()
 	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(`{"access_token":"tok","token_type":"Bearer"}`), 0600)
 
 	stdout, _, exitCode := runCLI(t, map[string]string{"FEEDMIX_CONFIG_DIR": configDir, "FEEDMIX_API_URL": server.URL}, "feed")
@@ -275,7 +275,7 @@ func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 	defer server.Close()
 
 	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer os.RemoveAll(configDir)
+	defer func() { _ = os.RemoveAll(configDir) }()
 
 	tokenData := `{"access_token":"test-token","token_type":"Bearer"}`
 	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(tokenData), 0600)

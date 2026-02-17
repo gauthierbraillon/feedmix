@@ -160,9 +160,10 @@ func TestClient_FetchRecentVideos(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if r.URL.Path == "/youtube/v3/search" {
+		switch r.URL.Path {
+		case "/youtube/v3/search":
 			_ = json.NewEncoder(w).Encode(searchResponse)
-		} else if r.URL.Path == "/youtube/v3/videos" {
+		case "/youtube/v3/videos":
 			_ = json.NewEncoder(w).Encode(videoResponse)
 		}
 	}))

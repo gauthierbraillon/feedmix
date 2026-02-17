@@ -152,7 +152,7 @@ func TestCallbackServer_ErrorIncludesPort(t *testing.T) {
 	if err != nil {
 		t.Skipf("port %d unavailable for test setup: %v", port, err)
 	}
-	defer blocker.Close()
+	defer func() { _ = blocker.Close() }()
 
 	server := NewCallbackServer(port)
 	_, err = server.WaitForCallback(context.Background(), "state", time.Second)
