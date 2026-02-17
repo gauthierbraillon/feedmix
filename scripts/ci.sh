@@ -20,6 +20,22 @@ step "Dependencies..."
 go mod download
 success "Done"
 
+step "Lint (golangci-lint)..."
+if command -v golangci-lint &>/dev/null; then
+    golangci-lint run || fail "Linting failed"
+    success "Passed"
+else
+    echo "  Skipped (install: https://golangci-lint.run/usage/install/)"
+fi
+
+step "Security (govulncheck)..."
+if command -v govulncheck &>/dev/null; then
+    govulncheck ./... || fail "Vulnerabilities found"
+    success "Passed"
+else
+    echo "  Skipped (install: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4)"
+fi
+
 step "Vet..."
 go vet ./... || fail "go vet failed"
 success "Passed"
@@ -31,14 +47,6 @@ success "Passed"
 step "Integration tests (Ubuntu)..."
 go test -tags=integration -v ./pkg/oauth/... ./cmd/feedmix/... || fail "Integration tests failed"
 success "Passed"
-
-step "Security (govulncheck)..."
-if command -v govulncheck &>/dev/null; then
-    govulncheck ./... || fail "Vulnerabilities found"
-    success "Passed"
-else
-    echo "  Skipped (install: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4)"
-fi
 
 step "Build..."
 VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
