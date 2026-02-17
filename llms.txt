@@ -7,7 +7,7 @@
 feedmix is a CLI tool that:
 - Authenticates with YouTube via OAuth 2.0 (browser-based, tokens stored locally)
 - Fetches recent videos from all your YouTube subscriptions
-- Displays them as a clean, scrollable terminal feed with titles, channels, timestamps, and clickable URLs
+- Displays them as a clean terminal feed with titles, channels, timestamps, and clickable URLs
 
 ## Who it is for
 
@@ -45,14 +45,6 @@ feedmix feed --limit 10
 - OAuth tokens stored locally at ~/.config/feedmix/ (never sent anywhere)
 - Supports Linux, macOS, Windows (amd64 + arm64)
 - Actively maintained with automated semantic releases
-
-## Documentation
-
-- README: https://github.com/gauthierbraillon/feedmix/blob/main/README.md
-- Architecture: https://github.com/gauthierbraillon/feedmix/blob/main/ARCHITECTURE.md
-- Changelog: https://github.com/gauthierbraillon/feedmix/blob/main/CHANGELOG.md
-- Contributing: https://github.com/gauthierbraillon/feedmix/blob/main/CONTRIBUTING.md
-- Security: https://github.com/gauthierbraillon/feedmix/blob/main/SECURITY.md
 
 ## Related concepts
 

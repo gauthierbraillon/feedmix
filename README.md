@@ -12,9 +12,9 @@ Aggregate your YouTube subscriptions into a lightweight terminal feed — a priv
 YouTube's subscription feed buries new videos under recommendations and ads. RSS readers require third-party bridges that may break or log your activity. Feedmix cuts through both:
 
 - **Terminal-native** — runs anywhere, renders in your shell, no browser required
-- **Lightweight** — single static binary, ~5 MB, zero runtime dependencies
+- **Lightweight** — single static binary, zero runtime dependencies
 - **Privacy-focused** — OAuth tokens stored locally at `~/.config/feedmix/` (0600), nothing sent to third parties
-- **No account required** — uses your own Google OAuth credentials; your data stays yours
+- **No third-party account** — uses your own Google OAuth credentials; your data stays yours
 
 ## Install
 

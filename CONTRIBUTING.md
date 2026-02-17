@@ -57,7 +57,6 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 - One feature or fix per PR
 - All tests must pass (`go test -race ./...`)
-- No new mocks of internal packages
 - Conventional commit title on the PR
 
 ## Reporting Issues

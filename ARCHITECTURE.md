@@ -55,7 +55,7 @@ main → load tokens from disk
 | `internal/aggregator` | Feed aggregation and sorting | private |
 | `internal/display` | Terminal rendering | private |
 | `internal/ciconfig` | CI pipeline self-tests | private |
-| `pkg/contracts` | YouTube API contract tests | public |
+| `pkg/contracts` | YouTube API contract tests | private (test-only) |
 
 ## Key Design Decisions
 

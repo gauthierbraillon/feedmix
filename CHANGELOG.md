@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Pin all GitHub Actions to immutable commit SHAs to prevent supply chain attacks
-- Add `llms.txt`, `ARCHITECTURE.md`, `SECURITY.md`, `CONTRIBUTING.md` for project transparency
 
 ## [v0.5.0] - 2026-02-15
 
@@ -25,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Automatic semantic releases triggered by conventional commit messages (`feat:`, `fix:`, `feat!:`)
-- Automatic CD pipeline following Bryan Finster's Minimum CD principles
+- Automatic CD pipeline following Minimum CD principles
 - ATDD philosophy with E2E smoke tests and rollback on failure
 
 ### Fixed
