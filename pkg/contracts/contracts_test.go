@@ -165,11 +165,10 @@ func TestOAuthFlow_ParsesTokenResponse(t *testing.T) {
 
 	config := oauth.Config{
 		ClientID: "id", ClientSecret: "secret",
-		TokenURL: server.URL, RedirectURL: "http://localhost/callback",
-		Scopes: []string{"read"},
+		TokenURL: server.URL,
 	}
 
-	token, err := oauth.NewFlow(config).ExchangeCode(context.Background(), "code")
+	token, err := oauth.NewFlow(config).RefreshAccessToken(context.Background(), "1//test-refresh")
 	if err != nil {
 		t.Fatalf("should parse response: %v", err)
 	}

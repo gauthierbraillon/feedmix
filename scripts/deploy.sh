@@ -40,12 +40,16 @@ echo ""
 step "Building release binaries..."
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
+LDFLAGS="-X main.version=$VERSION"
+LDFLAGS="$LDFLAGS -X main.clientID=${FEEDMIX_YOUTUBE_CLIENT_ID:-}"
+LDFLAGS="$LDFLAGS -X main.clientSecret=${FEEDMIX_YOUTUBE_CLIENT_SECRET:-}"
+
 for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
     GOOS="${platform%/*}"
     GOARCH="${platform#*/}"
     out="$BUILD_DIR/feedmix-$VERSION-$GOOS-$GOARCH"
     [ "$GOOS" = "windows" ] && out="${out}.exe"
-    GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION" -o "$out" ./cmd/feedmix
+    GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "$LDFLAGS" -o "$out" ./cmd/feedmix
 done
 
 cd "$BUILD_DIR" && sha256sum feedmix-* > checksums.txt && cd ..

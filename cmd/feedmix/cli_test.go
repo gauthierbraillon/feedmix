@@ -23,7 +23,6 @@ func TestMain(m *testing.M) {
 
 	binaryPath = filepath.Join(dir, "feedmix")
 
-	// Get version from git for build
 	versionCmd := exec.Command("git", "describe", "--tags", "--always", "--dirty")
 	versionOutput, err := versionCmd.Output()
 	version := "dev"
@@ -31,7 +30,6 @@ func TestMain(m *testing.M) {
 		version = strings.TrimSpace(string(versionOutput))
 	}
 
-	// Build with version injected via ldflags
 	ldflags := fmt.Sprintf("-X main.version=%s", version)
 	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryPath, ".")
 	if err := cmd.Run(); err != nil {
@@ -41,12 +39,21 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// runCLI runs the feedmix binary with the given env and args.
+// Explicit env values override inherited env; an empty string value unsets the var.
 func runCLI(t *testing.T, env map[string]string, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
 	cmd := exec.Command(binaryPath, args...)
-	cmd.Env = os.Environ()
+	for _, e := range os.Environ() {
+		key := strings.SplitN(e, "=", 2)[0]
+		if _, overridden := env[key]; !overridden {
+			cmd.Env = append(cmd.Env, e)
+		}
+	}
 	for k, v := range env {
-		cmd.Env = append(cmd.Env, k+"="+v)
+		if v != "" {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
 	}
 
 	var outBuf, errBuf strings.Builder
@@ -65,10 +72,8 @@ func runCLI(t *testing.T, env map[string]string, args ...string) (stdout, stderr
 
 func TestRootCommand_Help(t *testing.T) {
 	stdout, _, _ := runCLI(t, nil, "--help")
-	for _, want := range []string{"feedmix", "auth", "feed"} {
-		if !strings.Contains(strings.ToLower(stdout), want) {
-			t.Errorf("help should contain %q", want)
-		}
+	if !strings.Contains(strings.ToLower(stdout), "feedmix") {
+		t.Errorf("help should contain feedmix, got: %s", stdout)
 	}
 }
 
@@ -76,16 +81,13 @@ func TestRootCommand_HelpShowsVersion(t *testing.T) {
 	helpOutput, _, _ := runCLI(t, nil, "--help")
 	versionOutput, _, _ := runCLI(t, nil, "--version")
 
-	// Extract version from --version output (e.g., "feedmix version v0.2.0")
 	versionLine := strings.TrimSpace(versionOutput)
 	parts := strings.Fields(versionLine)
 	if len(parts) < 3 {
 		t.Fatalf("unexpected version output format: %s", versionOutput)
 	}
-	actualVersion := parts[2] // "feedmix version v0.2.0" -> "v0.2.0"
+	actualVersion := parts[2]
 
-	// Requirement: --help MUST show the same version as --version
-	// This ensures users know which version they're running from help output
 	if !strings.Contains(helpOutput, actualVersion) {
 		t.Errorf("--help should display version %q (same as --version), but it's missing.\nHelp output: %s", actualVersion, helpOutput)
 	}
@@ -98,33 +100,44 @@ func TestRootCommand_Version(t *testing.T) {
 	}
 }
 
+func TestFeedCommand_RequiresRefreshToken(t *testing.T) {
+	_, stderr, exitCode := runCLI(t, map[string]string{"FEEDMIX_YOUTUBE_REFRESH_TOKEN": ""}, "feed")
 
-func TestAuthCommand_RequiresCredentials(t *testing.T) {
-	_, stderr, exitCode := runCLI(t, nil, "auth")
 	if exitCode == 0 {
-		t.Error("should fail without credentials")
+		t.Error("feed should fail without refresh token")
 	}
-	if !strings.Contains(stderr, "FEEDMIX_YOUTUBE") {
-		t.Errorf("error should mention env vars, got: %s", stderr)
+	if !strings.Contains(stderr, "FEEDMIX_YOUTUBE_REFRESH_TOKEN") {
+		t.Errorf("error should tell user which env var to set, got: %s", stderr)
 	}
 }
 
-func TestFeedCommand_NotAuthenticatedErrorShowsConfigPath(t *testing.T) {
-	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer func() { _ = os.RemoveAll(configDir) }()
+func mockFeedServer(youtubeHandler http.HandlerFunc) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"access_token": "test-access-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			return
+		}
+		youtubeHandler(w, r)
+	}))
+}
 
-	_, stderr, exitCode := runCLI(t, map[string]string{"FEEDMIX_CONFIG_DIR": configDir}, "feed")
-
-	if exitCode == 0 {
-		t.Fatal("feed should fail when no token exists")
-	}
-	if !strings.Contains(stderr, configDir) {
-		t.Errorf("error should include config path so user knows where to look, got: %s", stderr)
+func feedEnv(server *httptest.Server) map[string]string {
+	return map[string]string{
+		"FEEDMIX_YOUTUBE_REFRESH_TOKEN":  "test-refresh-token",
+		"FEEDMIX_YOUTUBE_CLIENT_ID":      "test-id",
+		"FEEDMIX_YOUTUBE_CLIENT_SECRET":  "test-secret",
+		"FEEDMIX_OAUTH_TOKEN_URL":        server.URL,
+		"FEEDMIX_API_URL":                server.URL,
 	}
 }
 
 func TestFeedCommand_DisplaysItems(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"items": []map[string]interface{}{
@@ -138,21 +151,10 @@ func TestFeedCommand_DisplaysItems(t *testing.T) {
 				},
 			},
 		})
-	}))
+	})
 	defer server.Close()
 
-	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer func() { _ = os.RemoveAll(configDir) }()
-
-	tokenData := `{"access_token":"test-token","token_type":"Bearer"}`
-	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(tokenData), 0600)
-
-	env := map[string]string{
-		"FEEDMIX_CONFIG_DIR": configDir,
-		"FEEDMIX_API_URL":    server.URL,
-	}
-
-	stdout, _, exitCode := runCLI(t, env, "feed")
+	stdout, _, exitCode := runCLI(t, feedEnv(server), "feed")
 	if exitCode != 0 {
 		t.Errorf("feed should succeed, got exit code %d", exitCode)
 	}
@@ -162,7 +164,7 @@ func TestFeedCommand_DisplaysItems(t *testing.T) {
 }
 
 func TestFeedCommand_AggregatesMultipleChannels(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if strings.Contains(r.URL.Path, "/subscriptions") {
@@ -193,14 +195,10 @@ func TestFeedCommand_AggregatesMultipleChannels(t *testing.T) {
 		}
 
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
-	}))
+	})
 	defer server.Close()
 
-	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer func() { _ = os.RemoveAll(configDir) }()
-	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(`{"access_token":"tok","token_type":"Bearer"}`), 0600)
-
-	stdout, _, exitCode := runCLI(t, map[string]string{"FEEDMIX_CONFIG_DIR": configDir, "FEEDMIX_API_URL": server.URL}, "feed")
+	stdout, _, exitCode := runCLI(t, feedEnv(server), "feed")
 
 	if exitCode != 0 {
 		t.Fatalf("feed should succeed with multiple channels, exit code %d\noutput: %s", exitCode, stdout)
@@ -214,10 +212,9 @@ func TestFeedCommand_AggregatesMultipleChannels(t *testing.T) {
 }
 
 func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// First call: subscriptions
 		if strings.Contains(r.URL.Path, "/subscriptions") {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"items": []map[string]interface{}{
@@ -234,7 +231,6 @@ func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 			return
 		}
 
-		// Second call: search for videos
 		if strings.Contains(r.URL.Path, "/search") {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"items": []map[string]interface{}{
@@ -254,7 +250,6 @@ func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 			return
 		}
 
-		// Third call: video statistics
 		if strings.Contains(r.URL.Path, "/videos") {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"items": []map[string]interface{}{
@@ -271,32 +266,19 @@ func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 				},
 			})
 		}
-	}))
+	})
 	defer server.Close()
 
-	configDir, _ := os.MkdirTemp("", "feedmix-config")
-	defer func() { _ = os.RemoveAll(configDir) }()
-
-	tokenData := `{"access_token":"test-token","token_type":"Bearer"}`
-	_ = os.WriteFile(filepath.Join(configDir, "youtube_token.json"), []byte(tokenData), 0600)
-
-	env := map[string]string{
-		"FEEDMIX_CONFIG_DIR": configDir,
-		"FEEDMIX_API_URL":    server.URL,
-	}
-
-	stdout, _, exitCode := runCLI(t, env, "feed")
+	stdout, _, exitCode := runCLI(t, feedEnv(server), "feed")
 	if exitCode != 0 {
 		t.Errorf("feed should succeed, got exit code %d", exitCode)
 	}
 
-	// Should display video URL, not channel URL
 	expectedVideoURL := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 	if !strings.Contains(stdout, expectedVideoURL) {
 		t.Errorf("feed should display video URL %q, got: %s", expectedVideoURL, stdout)
 	}
 
-	// Should NOT display channel URL
 	channelURL := "https://youtube.com/channel/UCxYz123ABC"
 	if strings.Contains(stdout, channelURL) {
 		t.Errorf("feed should NOT display channel URL %q (should show videos instead), got: %s", channelURL, stdout)

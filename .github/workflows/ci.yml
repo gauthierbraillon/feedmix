@@ -126,9 +126,15 @@ jobs:
           cache: true
 
       - name: Build with version
+        env:
+          FEEDMIX_YOUTUBE_CLIENT_ID: ${{ secrets.FEEDMIX_YOUTUBE_CLIENT_ID }}
+          FEEDMIX_YOUTUBE_CLIENT_SECRET: ${{ secrets.FEEDMIX_YOUTUBE_CLIENT_SECRET }}
         run: |
           VERSION=$(git describe --tags --always --dirty)
-          go build -ldflags="-X main.version=$VERSION" -v ./cmd/feedmix
+          LDFLAGS="-X main.version=$VERSION"
+          LDFLAGS="$LDFLAGS -X main.clientID=${FEEDMIX_YOUTUBE_CLIENT_ID:-}"
+          LDFLAGS="$LDFLAGS -X main.clientSecret=${FEEDMIX_YOUTUBE_CLIENT_SECRET:-}"
+          go build -ldflags="$LDFLAGS" -v ./cmd/feedmix
           echo "Built version: $VERSION"
 
       - name: Verify binary
@@ -225,15 +231,21 @@ jobs:
           cache: true
 
       - name: Build release binaries
+        env:
+          FEEDMIX_YOUTUBE_CLIENT_ID: ${{ secrets.FEEDMIX_YOUTUBE_CLIENT_ID }}
+          FEEDMIX_YOUTUBE_CLIENT_SECRET: ${{ secrets.FEEDMIX_YOUTUBE_CLIENT_SECRET }}
         run: |
           VERSION="${{ needs.semantic-release.outputs.new_version }}"
+          LDFLAGS="-X main.version=$VERSION"
+          LDFLAGS="$LDFLAGS -X main.clientID=${FEEDMIX_YOUTUBE_CLIENT_ID:-}"
+          LDFLAGS="$LDFLAGS -X main.clientSecret=${FEEDMIX_YOUTUBE_CLIENT_SECRET:-}"
           mkdir -p dist
           for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             GOOS="${platform%/*}"
             GOARCH="${platform#*/}"
             out="dist/feedmix-$VERSION-$GOOS-$GOARCH"
             [ "$GOOS" = "windows" ] && out="${out}.exe"
-            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION" -o "$out" ./cmd/feedmix
+            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "$LDFLAGS" -o "$out" ./cmd/feedmix
           done
           cd dist && sha256sum feedmix-* > checksums.txt
 

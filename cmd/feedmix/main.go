@@ -16,14 +16,25 @@ import (
 	"github.com/gauthierbraillon/feedmix/internal/aggregator"
 	"github.com/gauthierbraillon/feedmix/internal/display"
 	"github.com/gauthierbraillon/feedmix/internal/youtube"
-	"github.com/gauthierbraillon/feedmix/pkg/browser"
 	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
 
 // version is set via ldflags at build time:
-//   go build -ldflags="-X main.version=$(git describe --tags --always --dirty)"
+//
+//	go build -ldflags="-X main.version=$(git describe --tags --always --dirty)"
+//
 // OR automatically from build info when installed via: go install github.com/user/repo/cmd/tool@v1.2.3
 var version = "dev"
+
+// clientID and clientSecret are embedded at build time via ldflags:
+//
+//	go build -ldflags="-X main.clientID=$ID -X main.clientSecret=$SECRET"
+//
+// Environment variables FEEDMIX_YOUTUBE_CLIENT_ID / FEEDMIX_YOUTUBE_CLIENT_SECRET take priority.
+var (
+	clientID     string
+	clientSecret string
+)
 
 func init() {
 	// Resolve actual version (ldflags or build info)
@@ -74,66 +85,10 @@ func newRootCmd() *cobra.Command {
 	}
 
 	rootCmd.SetVersionTemplate("feedmix version {{.Version}}\n")
-	rootCmd.AddCommand(newAuthCmd())
 	rootCmd.AddCommand(newFeedCmd())
 	rootCmd.AddCommand(newConfigCmd())
 
 	return rootCmd
-}
-
-func newAuthCmd() *cobra.Command {
-	var port int
-
-	cmd := &cobra.Command{
-		Use:   "auth",
-		Short: "Authenticate with YouTube",
-		Long:  "Initiate OAuth authentication flow for YouTube.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientID := os.Getenv("FEEDMIX_YOUTUBE_CLIENT_ID")
-			clientSecret := os.Getenv("FEEDMIX_YOUTUBE_CLIENT_SECRET")
-
-			if clientID == "" || clientSecret == "" {
-				return fmt.Errorf("missing credentials: set FEEDMIX_YOUTUBE_CLIENT_ID and FEEDMIX_YOUTUBE_CLIENT_SECRET")
-			}
-
-			redirectURL := fmt.Sprintf("http://localhost:%d/callback", port)
-			config := oauth.YouTubeOAuthConfig(clientID, clientSecret, redirectURL)
-			flow := oauth.NewFlow(config)
-			authURL, state := flow.GenerateAuthURL()
-
-			fmt.Fprintln(cmd.OutOrStdout(), "Opening browser for authorization...")
-
-			if err := browser.Open(authURL); err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "Visit: %s\n", authURL)
-			}
-
-			fmt.Fprintln(cmd.OutOrStdout(), "Waiting for authorization...")
-			callbackServer := oauth.NewCallbackServer(port)
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-
-			code, err := callbackServer.WaitForCallback(ctx, state, 5*time.Minute)
-			if err != nil {
-				return fmt.Errorf("authorization failed: %w", err)
-			}
-
-			token, err := flow.ExchangeCode(ctx, code)
-			if err != nil {
-				return fmt.Errorf("token exchange failed: %w", err)
-			}
-
-			storage := oauth.NewTokenStorage(getConfigDir())
-			if err := storage.Save("youtube", token); err != nil {
-				return fmt.Errorf("failed to save token: %w", err)
-			}
-
-			fmt.Fprintln(cmd.OutOrStdout(), "Successfully authenticated!")
-			return nil
-		},
-	}
-
-	cmd.Flags().IntVarP(&port, "port", "p", 8080, "Port for OAuth callback server")
-	return cmd
 }
 
 func newFeedCmd() *cobra.Command {
@@ -147,16 +102,33 @@ func newFeedCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			configDir := getConfigDir()
-			storage := oauth.NewTokenStorage(configDir)
-			token, err := storage.Load("youtube")
+			refreshToken := os.Getenv("FEEDMIX_YOUTUBE_REFRESH_TOKEN")
+			if refreshToken == "" {
+				return fmt.Errorf("missing credentials: set FEEDMIX_YOUTUBE_REFRESH_TOKEN")
+			}
+
+			id := os.Getenv("FEEDMIX_YOUTUBE_CLIENT_ID")
+			if id == "" {
+				id = clientID
+			}
+			secret := os.Getenv("FEEDMIX_YOUTUBE_CLIENT_SECRET")
+			if secret == "" {
+				secret = clientSecret
+			}
+
+			config := oauth.YouTubeOAuthConfig(id, secret)
+			if tokenURL := os.Getenv("FEEDMIX_OAUTH_TOKEN_URL"); tokenURL != "" {
+				config.TokenURL = tokenURL
+			}
+
+			token, err := oauth.NewFlow(config).RefreshAccessToken(ctx, refreshToken)
 			if err != nil {
-				return fmt.Errorf("not authenticated: run 'feedmix auth' (config: %s)", configDir)
+				return fmt.Errorf("failed to refresh token: %w", err)
 			}
 
 			opts := []youtube.ClientOption{}
-			if url := os.Getenv("FEEDMIX_API_URL"); url != "" {
-				opts = append(opts, youtube.WithBaseURL(url))
+			if apiURL := os.Getenv("FEEDMIX_API_URL"); apiURL != "" {
+				opts = append(opts, youtube.WithBaseURL(apiURL))
 			}
 			client := youtube.NewClient(token, opts...)
 

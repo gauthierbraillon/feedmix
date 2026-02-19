@@ -50,7 +50,10 @@ success "Passed"
 
 step "Build..."
 VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
-go build -ldflags="-X main.version=$VERSION" -o feedmix ./cmd/feedmix || fail "Build failed"
+LDFLAGS="-X main.version=$VERSION"
+LDFLAGS="$LDFLAGS -X main.clientID=${FEEDMIX_YOUTUBE_CLIENT_ID:-}"
+LDFLAGS="$LDFLAGS -X main.clientSecret=${FEEDMIX_YOUTUBE_CLIENT_SECRET:-}"
+go build -ldflags="$LDFLAGS" -o feedmix ./cmd/feedmix || fail "Build failed"
 success "Built ./feedmix (version: $VERSION)"
 
 step "Verify..."
