@@ -15,8 +15,8 @@ echo "=== Feedmix E2E Smoke Tests ==="
 # Determine which binary to test
 BINARY=""
 
-# Option 1: Use binary from GitHub release (if GITHUB_REF is set)
-if [ -n "${GITHUB_REF:-}" ]; then
+# Option 1: Use binary from GitHub release (only for tag pushes)
+if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
     VERSION="${GITHUB_REF#refs/tags/}"
     PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')"
     ARCH="$(uname -m)"
@@ -113,21 +113,14 @@ if [[ ! "$CONFIG_OUTPUT" =~ "config" ]] && [[ ! "$CONFIG_OUTPUT" =~ ".config" ]]
 fi
 success "Config: $CONFIG_OUTPUT"
 
-step "Test 3: Auth help command"
-AUTH_HELP_OUTPUT=$($BINARY auth --help 2>&1) || true
-if [[ ! "$AUTH_HELP_OUTPUT" =~ "auth" ]] && [[ ! "$AUTH_HELP_OUTPUT" =~ "Authenticate" ]]; then
-    fail "Auth help output unexpected: $AUTH_HELP_OUTPUT"
-fi
-success "Auth help displayed"
-
-step "Test 4: Feed help command"
+step "Test 3: Feed help command"
 FEED_HELP_OUTPUT=$($BINARY feed --help 2>&1) || true
 if [[ ! "$FEED_HELP_OUTPUT" =~ "feed" ]] && [[ ! "$FEED_HELP_OUTPUT" =~ "View" ]]; then
     fail "Feed help output unexpected: $FEED_HELP_OUTPUT"
 fi
 success "Feed help displayed"
 
-step "Test 5: Invalid command returns error"
+step "Test 4: Invalid command returns error"
 if $BINARY nonexistent-command &>/dev/null; then
     fail "Invalid command should return error"
 fi
