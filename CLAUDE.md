@@ -5,7 +5,7 @@
 Feedmix is a CLI tool for aggregating YouTube subscriptions into a terminal feed.
 
 **Core Features:**
-- **Authentication**: OAuth 2.0 flow with Google (opens browser, saves tokens)
+- **Authentication**: OAuth 2.0 via refresh token in environment variable (`FEEDMIX_YOUTUBE_REFRESH_TOKEN`)
 - **Feed Display**: Terminal-based view of recent subscription videos
 - **Configuration**: Environment variables or .env file for credentials
 - **Installation**: Single binary via `go install github.com/gauthierbraillon/feedmix/cmd/feedmix@latest`
@@ -333,6 +333,10 @@ Agents automatically activate at each phase:
    - **No manual gates**: If tests pass, code deploys. Period.
    - **Fast feedback**: Know within minutes if deployment succeeds
    - **NEVER manual git push** - deploy.sh handles push after all tests pass
+   - **WAIT for GitHub Actions to pass** before declaring success — run:
+     ```bash
+     RUN_ID=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch "$RUN_ID" --exit-status --compact
+     ```
    - Update .claude/memory/MEMORY.md with lessons learned (Developer)
 
 **Why This Workflow is NON-NEGOTIABLE:**
@@ -343,16 +347,19 @@ Agents automatically activate at each phase:
 - **Fast feedback**: Catch issues in seconds, not hours or days
 - **Continuous delivery**: Small, safe, frequent deployments
 
-**Code Style:**
+**Code Style — Lean Code:**
 - Follow [Effective Go](https://go.dev/doc/effective_go) conventions
 - Use `gofmt` (enforced by golangci-lint)
-- **No comments** - code must be self-explanatory through clear naming and structure
-  - Only exception: `#nosec` security suppressions (require explanation)
-  - Package documentation (godoc) is allowed
-  - If you need a comment, refactor the code to be clearer instead
+- **Clean names over comments** — if a name needs a comment, rename it
+  - No inline comments, no block comments
+  - Only exception: `#nosec` suppressions (with justification)
+  - Package godoc is allowed
+- **DRY** — extract duplication into a named abstraction; one source of truth
+- **SOLID** — single responsibility per function/type; depend on interfaces not concrete types
+- **YAGNI** — build only what's needed now; no speculative generality
+- **Minimum surface area** — small focused functions, no unused exports, no dead code
 - Prefer small, focused functions over large monolithic functions
 - Use interfaces for external dependencies (mockable in tests)
-- Avoid unnecessary abstractions (YAGNI - You Ain't Gonna Need It)
 
 ## Architecture
 

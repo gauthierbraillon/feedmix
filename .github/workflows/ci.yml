@@ -172,31 +172,34 @@ jobs:
           VERSION=${LATEST_TAG#v}
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
-          # Get commit message
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "Commit message: $COMMIT_MSG"
+          # Scan all commits since last tag for highest bump type
+          BUMP_TYPE="none"
+          while IFS= read -r COMMIT_MSG; do
+            echo "Checking: $COMMIT_MSG"
+            if [[ "$COMMIT_MSG" =~ ^feat(\(.*\))?!:|^[a-z]+(\(.*\))?!:|BREAKING[[:space:]]CHANGE ]]; then
+              BUMP_TYPE="major"
+              break
+            elif [[ "$COMMIT_MSG" =~ ^feat(\(.*\))?: ]] && [[ "$BUMP_TYPE" != "major" ]]; then
+              BUMP_TYPE="minor"
+            elif [[ "$COMMIT_MSG" =~ ^fix(\(.*\))?: ]] && [[ "$BUMP_TYPE" == "none" ]]; then
+              BUMP_TYPE="patch"
+            fi
+          done < <(git log "${LATEST_TAG}..HEAD" --pretty=%s)
 
-          # Determine bump type from conventional commit
-          if [[ "$COMMIT_MSG" =~ ^feat(\(.*\))?!:|^[a-z]+(\(.*\))?!:|BREAKING[[:space:]]CHANGE ]]; then
-            # Breaking change -> major bump
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-            BUMP_TYPE="major"
-          elif [[ "$COMMIT_MSG" =~ ^feat(\(.*\))?: ]]; then
-            # Feature -> minor bump
-            MINOR=$((MINOR + 1))
-            PATCH=0
-            BUMP_TYPE="minor"
-          elif [[ "$COMMIT_MSG" =~ ^fix(\(.*\))?: ]]; then
-            # Fix -> patch bump
-            PATCH=$((PATCH + 1))
-            BUMP_TYPE="patch"
-          else
-            # No release for other commit types (docs, chore, refactor, etc.)
-            echo "No release needed for commit type"
+          echo "Bump type: $BUMP_TYPE"
+
+          if [[ "$BUMP_TYPE" == "none" ]]; then
+            echo "No release needed (no feat/fix commits since $LATEST_TAG)"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
+          fi
+
+          if [[ "$BUMP_TYPE" == "major" ]]; then
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+          elif [[ "$BUMP_TYPE" == "minor" ]]; then
+            MINOR=$((MINOR + 1)); PATCH=0
+          else
+            PATCH=$((PATCH + 1))
           fi
 
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
