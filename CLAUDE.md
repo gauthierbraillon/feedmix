@@ -335,6 +335,8 @@ Agents automatically activate at each phase:
      ```bash
      RUN_ID=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch "$RUN_ID" --exit-status --compact
      ```
+   - **CONFIRM a new release was published** — verify with `gh release list --limit 1`
+   - **Work is ONLY done when**: GitHub Actions is green AND a new release is published
    - Update .claude/memory/MEMORY.md with lessons learned (Developer)
 
 **Why This Workflow is NON-NEGOTIABLE:**
