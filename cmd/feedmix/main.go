@@ -282,9 +282,15 @@ func newConfigCmd() *cobra.Command {
 			fmt.Fprint(out, "\nSubstack (optional)\n")
 			if len(substackURLs) == 0 {
 				fmt.Fprint(out, "  FEEDMIX_SUBSTACK_URLS  ✗ not configured\n")
-				fmt.Fprint(out, "\n  To add Substack publications, export in your shell:\n")
-				fmt.Fprint(out, "    export FEEDMIX_SUBSTACK_URLS=https://example.substack.com\n")
-				fmt.Fprint(out, "  (add to ~/.bashrc or ~/.zshrc to persist across sessions)\n")
+				fmt.Fprint(out, "\n  Set to a comma-separated list of Substack publications.\n")
+				fmt.Fprint(out, "  Both URL formats are accepted:\n")
+				fmt.Fprint(out, "    https://example.substack.com      (subdomain)\n")
+				fmt.Fprint(out, "    https://substack.com/@example      (@username)\n")
+				fmt.Fprint(out, "\n  To persist across sessions, add to your shell config:\n")
+				fmt.Fprint(out, "    # bash\n")
+				fmt.Fprint(out, "    echo 'export FEEDMIX_SUBSTACK_URLS=https://example.substack.com' >> ~/.bashrc\n")
+				fmt.Fprint(out, "    # zsh\n")
+				fmt.Fprint(out, "    echo 'export FEEDMIX_SUBSTACK_URLS=https://example.substack.com' >> ~/.zshrc\n")
 			} else {
 				fmt.Fprintf(out, "  FEEDMIX_SUBSTACK_URLS  ✓ %d configured\n", len(substackURLs))
 				for _, u := range substackURLs {
