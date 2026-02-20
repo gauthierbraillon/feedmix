@@ -305,6 +305,12 @@ func TestConfigCommand_ShowsSetupInstructionsWhenCredsMissing(t *testing.T) {
 	if strings.Count(stdout, "✗") < 3 {
 		t.Errorf("should show ✗ for all 3 missing YouTube credentials, got: %s", stdout)
 	}
+	if !strings.Contains(stdout, "export FEEDMIX_YOUTUBE_REFRESH_TOKEN") {
+		t.Errorf("should show export syntax, not .env instructions, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "~/.bashrc") {
+		t.Errorf("should reference shell config file for persistence, got: %s", stdout)
+	}
 }
 
 func TestConfigCommand_ShowsSubstackWhenConfigured(t *testing.T) {
@@ -326,6 +332,12 @@ func TestConfigCommand_ShowsSubstackSetupWhenNotConfigured(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "FEEDMIX_SUBSTACK_URLS") {
 		t.Errorf("should show FEEDMIX_SUBSTACK_URLS env var name, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "export FEEDMIX_SUBSTACK_URLS") {
+		t.Errorf("should show export syntax, not .env instructions, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "~/.bashrc") {
+		t.Errorf("should reference shell config file for persistence, got: %s", stdout)
 	}
 }
 
