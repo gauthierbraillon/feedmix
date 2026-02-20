@@ -149,6 +149,27 @@ func TestClient_FetchPosts_ReturnsErrorOnInvalidXML(t *testing.T) {
 	}
 }
 
+// TestResolveSubstackURL_NormalizesAtUsernameFormat documents @username URL normalization:
+// - https://substack.com/@username → https://username.substack.com
+// - traditional subdomain URLs pass through unchanged
+func TestResolveSubstackURL_NormalizesAtUsernameFormat(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"https://substack.com/@bryanfinster", "https://bryanfinster.substack.com"},
+		{"https://substack.com/@simonwillison", "https://simonwillison.substack.com"},
+		{"https://bryanfinster.substack.com", "https://bryanfinster.substack.com"},
+		{"https://example.substack.com", "https://example.substack.com"},
+	}
+	for _, tc := range tests {
+		got := resolveSubstackURL(tc.input)
+		if got != tc.want {
+			t.Errorf("resolveSubstackURL(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
 // TestClient_FetchPosts_AppendsRSSPathToPublicationURL documents URL construction:
 // - Client appends /feed to the publication URL before requesting
 func TestClient_FetchPosts_AppendsRSSPathToPublicationURL(t *testing.T) {

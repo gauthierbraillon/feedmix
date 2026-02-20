@@ -82,7 +82,19 @@ func (c *Client) buildFeedURL(publicationURL string) string {
 	if c.baseURL != "" {
 		return strings.TrimRight(c.baseURL, "/") + "/feed"
 	}
-	return strings.TrimRight(publicationURL, "/") + "/feed"
+	return strings.TrimRight(resolveSubstackURL(publicationURL), "/") + "/feed"
+}
+
+// resolveSubstackURL converts https://substack.com/@username profile URLs to
+// the subdomain form https://username.substack.com, which hosts the RSS feed.
+// Traditional subdomain URLs are returned unchanged.
+func resolveSubstackURL(publicationURL string) string {
+	const profilePrefix = "https://substack.com/@"
+	if strings.HasPrefix(publicationURL, profilePrefix) {
+		username := strings.TrimPrefix(publicationURL, profilePrefix)
+		return "https://" + username + ".substack.com"
+	}
+	return publicationURL
 }
 
 func parseRSS(data []byte, limit int) ([]Post, error) {
