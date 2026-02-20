@@ -6,12 +6,14 @@ import "time"
 type Source string
 
 const SourceYouTube Source = "youtube"
+const SourceSubstack Source = "substack"
 
 type ItemType string
 
 const (
-	ItemTypeVideo ItemType = "video"
-	ItemTypeLike  ItemType = "like"
+	ItemTypeVideo   ItemType = "video"
+	ItemTypeLike    ItemType = "like"
+	ItemTypeArticle ItemType = "article"
 )
 
 type FeedItem struct {

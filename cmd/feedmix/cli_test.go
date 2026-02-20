@@ -211,6 +211,66 @@ func TestFeedCommand_AggregatesMultipleChannels(t *testing.T) {
 	}
 }
 
+const substackRSSXML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Test Newsletter</title>
+    <item>
+      <title>My Substack Article</title>
+      <link>https://testnewsletter.substack.com/p/my-article</link>
+      <dc:creator>Test Author</dc:creator>
+      <pubDate>Mon, 01 Jan 2024 12:00:00 +0000</pubDate>
+      <description>An interesting article.</description>
+      <guid>https://testnewsletter.substack.com/p/my-article</guid>
+    </item>
+  </channel>
+</rss>`
+
+// TestFeedCommand_ShowsSubstackItems documents Substack integration:
+// - FEEDMIX_SUBSTACK_URLS set to a publication URL → posts appear in unified feed
+func TestFeedCommand_ShowsSubstackItems(t *testing.T) {
+	rssServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		fmt.Fprint(w, substackRSSXML)
+	}))
+	defer rssServer.Close()
+
+	youtubeServer := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
+	})
+	defer youtubeServer.Close()
+
+	env := feedEnv(youtubeServer)
+	env["FEEDMIX_SUBSTACK_URLS"] = rssServer.URL
+
+	stdout, stderr, exitCode := runCLI(t, env, "feed")
+	if exitCode != 0 {
+		t.Fatalf("feed should succeed with Substack, exit code %d\nstderr: %s", exitCode, stderr)
+	}
+	if !strings.Contains(stdout, "My Substack Article") {
+		t.Errorf("feed should display Substack article title, got: %s", stdout)
+	}
+}
+
+// TestFeedCommand_WorksWithoutSubstack documents optional Substack integration:
+// - FEEDMIX_SUBSTACK_URLS not set → feed runs normally, no error
+func TestFeedCommand_WorksWithoutSubstack(t *testing.T) {
+	server := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
+	})
+	defer server.Close()
+
+	env := feedEnv(server)
+	env["FEEDMIX_SUBSTACK_URLS"] = ""
+
+	_, stderr, exitCode := runCLI(t, env, "feed")
+	if exitCode != 0 {
+		t.Errorf("feed should succeed without Substack URLs, got exit code %d\nstderr: %s", exitCode, stderr)
+	}
+}
+
 func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 	server := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

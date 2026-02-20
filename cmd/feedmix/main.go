@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gauthierbraillon/feedmix/internal/aggregator"
 	"github.com/gauthierbraillon/feedmix/internal/display"
+	"github.com/gauthierbraillon/feedmix/internal/substack"
 	"github.com/gauthierbraillon/feedmix/internal/youtube"
 	"github.com/gauthierbraillon/feedmix/pkg/oauth"
 )
@@ -79,8 +81,8 @@ func getConfigDir() string {
 func newRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:     "feedmix",
-		Short:   "Aggregate feeds from YouTube",
-		Long:    fmt.Sprintf("Feedmix aggregates your YouTube subscriptions into a unified feed.\n\nVersion: %s", version),
+		Short:   "Aggregate feeds from YouTube and Substack",
+		Long:    fmt.Sprintf("Feedmix aggregates your YouTube subscriptions and Substack newsletters into a unified feed.\n\nVersion: %s", version),
 		Version: version,
 	}
 
@@ -96,8 +98,8 @@ func newFeedCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "feed",
-		Short: "Display YouTube feed",
-		Long:  "Display your YouTube subscriptions feed.",
+		Short: "Display unified feed",
+		Long:  "Display your YouTube subscriptions and Substack newsletters in a unified feed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
@@ -175,6 +177,41 @@ func newFeedCmd() *cobra.Command {
 			}
 			wg.Wait()
 
+			substackURLs := parseSubstackURLs(os.Getenv("FEEDMIX_SUBSTACK_URLS"))
+			if len(substackURLs) > 0 {
+				substackClient := substack.NewClient()
+				var substackMu sync.Mutex
+				var substackWg sync.WaitGroup
+				for _, pubURL := range substackURLs {
+					substackWg.Add(1)
+					go func(pubURL string) {
+						defer substackWg.Done()
+						posts, err := substackClient.FetchPosts(ctx, pubURL, 5)
+						if err != nil {
+							fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to fetch Substack feed from %s: %v\n", pubURL, err)
+							return
+						}
+						items := make([]aggregator.FeedItem, 0, len(posts))
+						for _, post := range posts {
+							items = append(items, aggregator.FeedItem{
+								ID:          post.ID,
+								Source:      aggregator.SourceSubstack,
+								Type:        aggregator.ItemTypeArticle,
+								Title:       post.Title,
+								Description: post.Description,
+								Author:      post.Author,
+								URL:         post.URL,
+								PublishedAt: post.PublishedAt,
+							})
+						}
+						substackMu.Lock()
+						agg.AddItems(items)
+						substackMu.Unlock()
+					}(pubURL)
+				}
+				substackWg.Wait()
+			}
+
 			items := agg.GetFeed(aggregator.FeedOptions{Limit: limit})
 			formatter := display.NewTerminalFormatter()
 			fmt.Fprint(cmd.OutOrStdout(), formatter.FormatFeed(items))
@@ -196,4 +233,19 @@ func newConfigCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func parseSubstackURLs(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	urls := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			urls = append(urls, p)
+		}
+	}
+	return urls
 }
