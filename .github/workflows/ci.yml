@@ -278,6 +278,12 @@ jobs:
           VERSION="${{ needs.semantic-release.outputs.new_version }}"
           gh release edit "$VERSION" --draft=false --latest
 
+      - name: Warm up Go module proxy
+        if: steps.smoke_tests.outcome == 'success'
+        run: |
+          VERSION="${{ needs.semantic-release.outputs.new_version }}"
+          GOPROXY=proxy.golang.org go list -m "github.com/gauthierbraillon/feedmix@${VERSION}" || true
+
       - name: Rollback on E2E Failure
         if: steps.smoke_tests.outcome == 'failure'
         env:
