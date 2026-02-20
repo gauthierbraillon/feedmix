@@ -106,7 +106,7 @@ func newFeedCmd() *cobra.Command {
 
 			refreshToken := os.Getenv("FEEDMIX_YOUTUBE_REFRESH_TOKEN")
 			if refreshToken == "" {
-				return fmt.Errorf("missing credentials: set FEEDMIX_YOUTUBE_REFRESH_TOKEN")
+				return fmt.Errorf("missing credentials: set FEEDMIX_YOUTUBE_REFRESH_TOKEN (run 'feedmix config' for setup instructions)")
 			}
 
 			id := os.Getenv("FEEDMIX_YOUTUBE_CLIENT_ID")
@@ -224,12 +224,72 @@ func newFeedCmd() *cobra.Command {
 	return cmd
 }
 
+func credStatus(val string) string {
+	if val != "" {
+		return "✓ set"
+	}
+	return "✗ not set"
+}
+
+func resolveCredential(envVal, embedded string) string {
+	if envVal != "" {
+		return envVal
+	}
+	return embedded
+}
+
 func newConfigCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "config",
-		Short: "Show configuration",
+		Short: "Show configuration and setup instructions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Fprintf(cmd.OutOrStdout(), "Config directory: %s\n", getConfigDir())
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "Configuration directory: %s\n\n", getConfigDir())
+
+			ytID := resolveCredential(os.Getenv("FEEDMIX_YOUTUBE_CLIENT_ID"), clientID)
+			ytSecret := resolveCredential(os.Getenv("FEEDMIX_YOUTUBE_CLIENT_SECRET"), clientSecret)
+			ytToken := os.Getenv("FEEDMIX_YOUTUBE_REFRESH_TOKEN")
+
+			fmt.Fprintf(out, "YouTube (required)\n")
+			fmt.Fprintf(out, "  FEEDMIX_YOUTUBE_CLIENT_ID      %s\n", credStatus(ytID))
+			fmt.Fprintf(out, "  FEEDMIX_YOUTUBE_CLIENT_SECRET  %s\n", credStatus(ytSecret))
+			fmt.Fprintf(out, "  FEEDMIX_YOUTUBE_REFRESH_TOKEN  %s\n", credStatus(ytToken))
+
+			if ytID == "" || ytSecret == "" || ytToken == "" {
+				fmt.Fprint(out, "\n  To get credentials:\n")
+				fmt.Fprint(out, "    1. Create OAuth credentials (Desktop app):\n")
+				fmt.Fprint(out, "       https://console.cloud.google.com/apis/credentials\n")
+				fmt.Fprint(out, "    2. Enable YouTube Data API v3:\n")
+				fmt.Fprint(out, "       https://console.cloud.google.com/apis/library\n")
+				fmt.Fprint(out, "    3. Get a refresh token:\n")
+				fmt.Fprint(out, "       https://developers.google.com/oauthplayground\n")
+				fmt.Fprint(out, "       • Gear icon → Use your own OAuth credentials → enter Client ID + Secret\n")
+				fmt.Fprint(out, "       • Select scope: https://www.googleapis.com/auth/youtube.readonly\n")
+				fmt.Fprint(out, "       • Authorize APIs → Exchange authorization code → copy Refresh token\n")
+				fmt.Fprint(out, "    4. Add to .env (copy from .env.example):\n")
+				if ytID == "" {
+					fmt.Fprint(out, "       FEEDMIX_YOUTUBE_CLIENT_ID=<client-id>\n")
+				}
+				if ytSecret == "" {
+					fmt.Fprint(out, "       FEEDMIX_YOUTUBE_CLIENT_SECRET=<client-secret>\n")
+				}
+				if ytToken == "" {
+					fmt.Fprint(out, "       FEEDMIX_YOUTUBE_REFRESH_TOKEN=<refresh-token>\n")
+				}
+			}
+
+			substackURLs := parseSubstackURLs(os.Getenv("FEEDMIX_SUBSTACK_URLS"))
+			fmt.Fprint(out, "\nSubstack (optional)\n")
+			if len(substackURLs) == 0 {
+				fmt.Fprint(out, "  FEEDMIX_SUBSTACK_URLS  ✗ not configured\n")
+				fmt.Fprint(out, "\n  Add comma-separated publication URLs to .env:\n")
+				fmt.Fprint(out, "    FEEDMIX_SUBSTACK_URLS=https://example.substack.com\n")
+			} else {
+				fmt.Fprintf(out, "  FEEDMIX_SUBSTACK_URLS  ✓ %d configured\n", len(substackURLs))
+				for _, u := range substackURLs {
+					fmt.Fprintf(out, "    • %s\n", u)
+				}
+			}
 			return nil
 		},
 	}

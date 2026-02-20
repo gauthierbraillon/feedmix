@@ -271,6 +271,74 @@ func TestFeedCommand_WorksWithoutSubstack(t *testing.T) {
 	}
 }
 
+func TestConfigCommand_ShowsYouTubeStatusWhenSet(t *testing.T) {
+	env := map[string]string{
+		"FEEDMIX_YOUTUBE_CLIENT_ID":     "my-id",
+		"FEEDMIX_YOUTUBE_CLIENT_SECRET": "my-secret",
+		"FEEDMIX_YOUTUBE_REFRESH_TOKEN": "my-token",
+	}
+	stdout, _, exitCode := runCLI(t, env, "config")
+	if exitCode != 0 {
+		t.Fatalf("config should succeed, got exit code %d", exitCode)
+	}
+	if strings.Count(stdout, "✓") < 3 {
+		t.Errorf("should show ✓ for all 3 YouTube credentials, got: %s", stdout)
+	}
+}
+
+func TestConfigCommand_ShowsSetupInstructionsWhenCredsMissing(t *testing.T) {
+	env := map[string]string{
+		"FEEDMIX_YOUTUBE_CLIENT_ID":     "",
+		"FEEDMIX_YOUTUBE_CLIENT_SECRET": "",
+		"FEEDMIX_YOUTUBE_REFRESH_TOKEN": "",
+	}
+	stdout, _, exitCode := runCLI(t, env, "config")
+	if exitCode != 0 {
+		t.Fatalf("config should succeed even with no credentials, got exit code %d", exitCode)
+	}
+	if !strings.Contains(stdout, "console.cloud.google.com") {
+		t.Errorf("should show Google Cloud Console URL, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "oauthplayground") {
+		t.Errorf("should show OAuth Playground URL, got: %s", stdout)
+	}
+	if strings.Count(stdout, "✗") < 3 {
+		t.Errorf("should show ✗ for all 3 missing YouTube credentials, got: %s", stdout)
+	}
+}
+
+func TestConfigCommand_ShowsSubstackWhenConfigured(t *testing.T) {
+	env := map[string]string{"FEEDMIX_SUBSTACK_URLS": "https://simonwillison.substack.com"}
+	stdout, _, exitCode := runCLI(t, env, "config")
+	if exitCode != 0 {
+		t.Fatalf("config should succeed, got exit code %d", exitCode)
+	}
+	if !strings.Contains(stdout, "simonwillison.substack.com") {
+		t.Errorf("should show configured Substack URL, got: %s", stdout)
+	}
+}
+
+func TestConfigCommand_ShowsSubstackSetupWhenNotConfigured(t *testing.T) {
+	env := map[string]string{"FEEDMIX_SUBSTACK_URLS": ""}
+	stdout, _, exitCode := runCLI(t, env, "config")
+	if exitCode != 0 {
+		t.Fatalf("config should succeed, got exit code %d", exitCode)
+	}
+	if !strings.Contains(stdout, "FEEDMIX_SUBSTACK_URLS") {
+		t.Errorf("should show FEEDMIX_SUBSTACK_URLS env var name, got: %s", stdout)
+	}
+}
+
+func TestFeedCommand_ErrorMentionsConfigCommand(t *testing.T) {
+	_, stderr, exitCode := runCLI(t, map[string]string{"FEEDMIX_YOUTUBE_REFRESH_TOKEN": ""}, "feed")
+	if exitCode == 0 {
+		t.Error("feed should fail without refresh token")
+	}
+	if !strings.Contains(stderr, "feedmix config") {
+		t.Errorf("error should mention 'feedmix config', got: %s", stderr)
+	}
+}
+
 func TestFeedCommand_DisplaysVideoURLs(t *testing.T) {
 	server := mockFeedServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
