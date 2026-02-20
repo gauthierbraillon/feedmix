@@ -5,7 +5,7 @@
 [![Go version](https://img.shields.io/badge/go-1.24+-blue)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Aggregate your YouTube subscriptions and Substack newsletters into a single lightweight terminal feed.
+Aggregate your YouTube subscriptions and Substack newsletters into a single lightweight terminal feed — a privacy-focused RSS alternative for developers who prefer the command line.
 
 ## Why Feedmix?
 
