@@ -266,15 +266,15 @@ func newConfigCmd() *cobra.Command {
 				fmt.Fprint(out, "       • Gear icon → Use your own OAuth credentials → enter Client ID + Secret\n")
 				fmt.Fprint(out, "       • Select scope: https://www.googleapis.com/auth/youtube.readonly\n")
 				fmt.Fprint(out, "       • Authorize APIs → Exchange authorization code → copy Refresh token\n")
-				fmt.Fprint(out, "    4. Add to .env (copy from .env.example):\n")
+				fmt.Fprint(out, "    4. Export in your shell (add to ~/.bashrc or ~/.zshrc):\n")
 				if ytID == "" {
-					fmt.Fprint(out, "       FEEDMIX_YOUTUBE_CLIENT_ID=<client-id>\n")
+					fmt.Fprint(out, "       export FEEDMIX_YOUTUBE_CLIENT_ID=<client-id>\n")
 				}
 				if ytSecret == "" {
-					fmt.Fprint(out, "       FEEDMIX_YOUTUBE_CLIENT_SECRET=<client-secret>\n")
+					fmt.Fprint(out, "       export FEEDMIX_YOUTUBE_CLIENT_SECRET=<client-secret>\n")
 				}
 				if ytToken == "" {
-					fmt.Fprint(out, "       FEEDMIX_YOUTUBE_REFRESH_TOKEN=<refresh-token>\n")
+					fmt.Fprint(out, "       export FEEDMIX_YOUTUBE_REFRESH_TOKEN=<refresh-token>\n")
 				}
 			}
 
@@ -282,8 +282,9 @@ func newConfigCmd() *cobra.Command {
 			fmt.Fprint(out, "\nSubstack (optional)\n")
 			if len(substackURLs) == 0 {
 				fmt.Fprint(out, "  FEEDMIX_SUBSTACK_URLS  ✗ not configured\n")
-				fmt.Fprint(out, "\n  Add comma-separated publication URLs to .env:\n")
-				fmt.Fprint(out, "    FEEDMIX_SUBSTACK_URLS=https://example.substack.com\n")
+				fmt.Fprint(out, "\n  To add Substack publications, export in your shell:\n")
+				fmt.Fprint(out, "    export FEEDMIX_SUBSTACK_URLS=https://example.substack.com\n")
+				fmt.Fprint(out, "  (add to ~/.bashrc or ~/.zshrc to persist across sessions)\n")
 			} else {
 				fmt.Fprintf(out, "  FEEDMIX_SUBSTACK_URLS  ✓ %d configured\n", len(substackURLs))
 				for _, u := range substackURLs {
