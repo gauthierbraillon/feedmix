@@ -25,22 +25,16 @@ Always install the latest version: `go install github.com/gauthierbraillon/feedm
 
 ## Security Design
 
-### OAuth Token Storage
+### OAuth Token Handling
 
-- Tokens stored at `~/.config/feedmix/youtube_token.json`
-- File permissions: `0600` (owner read/write only)
-- Tokens never logged or printed to stdout
-
-### OAuth Flow
-
-- Local callback server binds only to `localhost:8080`
-- Authorization code exchanged immediately and discarded
-- Redirect URI validated against expected value
+- Refresh token sourced from `FEEDMIX_YOUTUBE_REFRESH_TOKEN` environment variable
+- Access tokens never logged or printed to stdout
+- Token exchange happens over HTTPS to Google's token endpoint only
 
 ### No Telemetry
 
 Feedmix makes no network requests other than:
-1. Google OAuth endpoints (during `feedmix auth`)
+1. Google OAuth token endpoint (to exchange refresh token for access token)
 2. YouTube Data API v3 (during `feedmix feed`)
 
 No analytics, no crash reporting, no usage tracking.

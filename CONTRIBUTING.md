@@ -50,7 +50,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## What to Mock
 
-- **Mock**: external APIs (YouTube Data API, OAuth endpoints), filesystem, browser
+- **Mock**: external APIs (YouTube Data API, OAuth endpoints), filesystem
 - **Do not mock**: our own internal packages
 
 ## Pull Requests

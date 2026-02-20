@@ -8,10 +8,9 @@ Feedmix is a CLI tool that authenticates with Google via OAuth 2.0, fetches subs
 User
  │
  ▼
-cmd/feedmix          ← CLI entry point (Cobra commands: auth, feed, config)
+cmd/feedmix          ← CLI entry point (feed command)
  │
- ├── pkg/oauth        ← OAuth 2.0 flow (browser launch + local callback server)
- │    └── pkg/browser ← Cross-platform browser launcher
+ ├── pkg/oauth        ← OAuth 2.0 token refresh (exchange refresh token for access token)
  │
  ├── internal/youtube ← YouTube Data API v3 client (subscriptions, videos, search)
  │
@@ -22,26 +21,18 @@ cmd/feedmix          ← CLI entry point (Cobra commands: auth, feed, config)
 
 ## Data Flow
 
-### `feedmix auth`
-
-```
-main → oauth.NewFlow() → launch browser → Google OAuth consent
-                       → local HTTP server waits on :8080/callback
-                       → exchange code for tokens
-                       → save tokens to ~/.config/feedmix/youtube_token.json (0600)
-```
-
 ### `feedmix feed`
 
 ```
-main → load tokens from disk
-     → youtube.NewClient(token)
-     → client.FetchSubscriptions()  → YouTube API /subscriptions
+main → read FEEDMIX_YOUTUBE_REFRESH_TOKEN from env
+     → oauth.Flow.RefreshAccessToken()  → Google token endpoint
+     → youtube.NewClient(accessToken)
+     → client.FetchSubscriptions()      → YouTube API /subscriptions
      → for each channel:
-         client.FetchRecentVideos() → YouTube API /search
+         client.FetchRecentVideos()     → YouTube API /search
      → aggregator.AddItems()
-     → aggregator.GetFeed()         → sort by date, apply --limit
-     → display.FormatFeed()         → print to stdout
+     → aggregator.GetFeed()             → sort by date, apply --limit
+     → display.FormatFeed()             → print to stdout
 ```
 
 ## Package Responsibilities
@@ -49,8 +40,7 @@ main → load tokens from disk
 | Package | Responsibility | Visibility |
 |---------|---------------|------------|
 | `cmd/feedmix` | CLI commands, flag parsing, wiring | binary |
-| `pkg/oauth` | OAuth 2.0 token acquisition and storage | public |
-| `pkg/browser` | Cross-platform browser launcher | public |
+| `pkg/oauth` | OAuth 2.0 token refresh | public |
 | `internal/youtube` | YouTube Data API v3 client | private |
 | `internal/aggregator` | Feed aggregation and sorting | private |
 | `internal/display` | Terminal rendering | private |
@@ -73,7 +63,7 @@ main → load tokens from disk
 |----------|-------------|
 | `FEEDMIX_YOUTUBE_CLIENT_ID` | Google OAuth client ID |
 | `FEEDMIX_YOUTUBE_CLIENT_SECRET` | Google OAuth client secret |
-| `FEEDMIX_CONFIG_DIR` | Override token storage directory (default: `~/.config/feedmix`) |
+| `FEEDMIX_YOUTUBE_REFRESH_TOKEN` | Google OAuth refresh token |
 | `FEEDMIX_API_URL` | Override YouTube API base URL (used in tests) |
 
 ## Testing Strategy

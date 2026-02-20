@@ -26,9 +26,9 @@ Or download a pre-built binary from [GitHub Releases](https://github.com/gauthie
 
 ## Setup
 
-Create OAuth credentials at [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
-1. Create OAuth 2.0 Client ID (Desktop app)
-2. Add `http://localhost:8080/callback` as authorized redirect URI
+1. Create OAuth credentials at [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (Desktop app type)
+2. Obtain a refresh token for your Google account (e.g. via [OAuth Playground](https://developers.google.com/oauthplayground) with `youtube.readonly` scope)
+3. Set environment variables:
 
 **Option 1: Using .env file (recommended)**
 ```bash
@@ -40,15 +40,14 @@ cp .env.example .env
 ```bash
 export FEEDMIX_YOUTUBE_CLIENT_ID="your-client-id"
 export FEEDMIX_YOUTUBE_CLIENT_SECRET="your-client-secret"
+export FEEDMIX_YOUTUBE_REFRESH_TOKEN="your-refresh-token"
 ```
 
 ## Usage
 
 ```bash
-feedmix auth           # Authenticate with YouTube (opens browser)
 feedmix feed           # View recent videos from your subscriptions
 feedmix feed --limit 5 # Limit to 5 results
-feedmix config         # Show config directory
 ```
 
 Example output:

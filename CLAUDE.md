@@ -13,7 +13,7 @@ Feedmix is a CLI tool for aggregating YouTube subscriptions into a terminal feed
 **Target Users:**
 - Developers who prefer terminal workflows
 - Users who want lightweight YouTube subscription monitoring
-- Privacy-conscious users (OAuth tokens stored locally)
+- Privacy-conscious users (credentials stored locally via env vars)
 
 **Distribution:**
 - Source: GitHub repository
@@ -54,12 +54,12 @@ Present a synthesis, then implement using the TDD workflow.
 **PRIMARY: Sociable Unit Tests (Fast Feedback During Development)**
 - **Tests ARE the acceptance criteria and testable requirements** (no separate requirements doc)
 - Test full flow through OUR code/modules
-- Mock external dependencies only (YouTube API, filesystem, browser)
+- Mock external dependencies only (YouTube API, filesystem)
 - No mocks of our own code - use real collaborators
 - Fast execution (< 2 seconds for all unit tests)
 - Run constantly during RED → GREEN → REFACTOR cycle
 - Test names describe requirements
-- Examples: OAuth flow with token storage, feed aggregation with YouTube client, display formatting
+- Examples: OAuth token refresh flow, feed aggregation with YouTube client, display formatting
 
 **SECONDARY: Contract Tests (API Behavior Verification)**
 - Test assumptions about external APIs (YouTube Data API v3)
@@ -75,7 +75,7 @@ Present a synthesis, then implement using the TDD workflow.
 - Run with `go test -tags=integration ./...`
 - Slower execution (5-15 seconds)
 - Run in CI pipeline before build
-- Examples: Real OAuth flow (opens browser), real YouTube API calls, filesystem operations
+- Examples: Real OAuth token refresh, real YouTube API calls, filesystem operations
 
 **QUATERNARY: CLI E2E Tests (Binary Behavior)**
 - Black box testing of compiled binary
@@ -83,7 +83,7 @@ Present a synthesis, then implement using the TDD workflow.
 - Test actual user experience
 - Located in `cmd/feedmix/*_integration_test.go`
 - Run in CI after build step
-- Examples: `feedmix --version`, `feedmix auth`, `feedmix feed`
+- Examples: `feedmix --version`, `feedmix feed`
 
 ### Test Organization
 
@@ -116,8 +116,6 @@ pkg/
 ### What to Mock
 
 - ✅ External APIs (YouTube Data API, OAuth endpoints)
-- ✅ Filesystem operations (token storage)
-- ✅ Browser launcher (OAuth flow)
 - ✅ HTTP clients (use httptest for external calls)
 - ❌ Our own code (internal packages)
 - ❌ Simple utilities (time formatting, string manipulation)
@@ -268,7 +266,7 @@ Agents automatically activate at each phase:
    - **Step 2: Write sociable unit tests** - Tests ARE the acceptance criteria and requirements
      - Test names describe the requirement (e.g., "TestOAuthFlow_SavesTokensAfterCallback")
      - Test full flow through our code with mocked externals
-     - Mock external systems only (YouTube API, filesystem, browser)
+     - Mock external systems only (YouTube API, filesystem)
      - Keep tests fast (< 2 seconds for all unit tests)
      - Tests ARE the specification - no separate requirements document needed
    - **Step 3: Run test to verify RED** - Confirm test fails for the right reason
@@ -386,11 +384,9 @@ internal/
 
 pkg/
 ├── oauth/
-│   ├── oauth.go                 # OAuth 2.0 flow (browser + callback server)
+│   ├── oauth.go                 # OAuth 2.0 token refresh
 │   ├── oauth_test.go            # Sociable unit tests
 │   └── oauth_integration_test.go # Real OAuth flow tests
-├── browser/
-│   └── browser.go               # Browser launcher (cross-platform)
 └── contracts/
     └── contracts_test.go        # YouTube API contract tests
 
@@ -411,7 +407,7 @@ scripts/
 - `scripts/`: Build and deployment automation
 
 **Dependency Injection**
-- External dependencies use interfaces (YouTube client, OAuth client, browser launcher)
+- External dependencies use interfaces (YouTube client, OAuth client)
 - Tests inject mocks of external dependencies
 - Production code injects real implementations
 
@@ -427,12 +423,9 @@ scripts/
 - Format: JSON with access token, refresh token, expiry
 
 **OAuth Flow**
-1. Start local callback server on `localhost:8080`
-2. Open browser to Google OAuth consent screen
-3. User approves, Google redirects to `http://localhost:8080/callback?code=...`
-4. Exchange code for tokens
-5. Save tokens to disk
-6. Shutdown callback server
+1. Read refresh token from `FEEDMIX_YOUTUBE_REFRESH_TOKEN` env var
+2. Exchange refresh token for access token via Google's token endpoint
+3. Use access token for YouTube API requests
 
 **YouTube API Integration**
 - API: YouTube Data API v3
@@ -520,7 +513,6 @@ go build -o feedmix ./cmd/feedmix
 
 # Test binary
 ./feedmix --version
-./feedmix auth
 ./feedmix feed
 ```
 
