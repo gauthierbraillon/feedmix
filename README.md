@@ -2,10 +2,10 @@
 
 [![CI](https://github.com/gauthierbraillon/feedmix/actions/workflows/ci.yml/badge.svg)](https://github.com/gauthierbraillon/feedmix/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gauthierbraillon/feedmix)](https://github.com/gauthierbraillon/feedmix/releases/latest)
-[![Go version](https://img.shields.io/badge/go-1.22+-blue)](https://go.dev)
+[![Go version](https://img.shields.io/badge/go-1.24+-blue)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Aggregate your YouTube subscriptions into a lightweight terminal feed — a privacy-focused RSS alternative for developers who prefer the command line.
+Aggregate your YouTube subscriptions and Substack newsletters into a single lightweight terminal feed.
 
 ## Why Feedmix?
 
@@ -26,43 +26,86 @@ Or download a pre-built binary from [GitHub Releases](https://github.com/gauthie
 
 ## Setup
 
-1. Create OAuth credentials at [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (Desktop app type)
-2. Obtain a refresh token for your Google account (e.g. via [OAuth Playground](https://developers.google.com/oauthplayground) with `youtube.readonly` scope)
-3. Set environment variables:
+Copy the example config and fill in your credentials:
 
-**Option 1: Using .env file (recommended)**
 ```bash
 cp .env.example .env
-# Edit .env and add your credentials
 ```
 
-**Option 2: Using environment variables**
-```bash
-export FEEDMIX_YOUTUBE_CLIENT_ID="your-client-id"
-export FEEDMIX_YOUTUBE_CLIENT_SECRET="your-client-secret"
-export FEEDMIX_YOUTUBE_REFRESH_TOKEN="your-refresh-token"
+Then follow the sections below for each source you want to enable.
+
+---
+
+### YouTube setup
+
+**Step 1 — Create OAuth credentials**
+
+1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Click **Create credentials → OAuth client ID**
+3. Choose **Desktop app**, give it any name, click **Create**
+4. Copy your **Client ID** and **Client Secret** into `.env`:
+   ```
+   FEEDMIX_YOUTUBE_CLIENT_ID=...
+   FEEDMIX_YOUTUBE_CLIENT_SECRET=...
+   ```
+
+**Step 2 — Enable the YouTube Data API**
+
+1. Go to [APIs & Services → Library](https://console.cloud.google.com/apis/library)
+2. Search for **YouTube Data API v3** and click **Enable**
+
+**Step 3 — Get a refresh token**
+
+1. Open [OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
+2. Click the gear icon (⚙) in the top-right → check **Use your own OAuth credentials**
+3. Enter your Client ID and Client Secret
+4. In the scope list on the left, find **YouTube Data API v3** and select `https://www.googleapis.com/auth/youtube.readonly`, then click **Authorize APIs**
+5. Sign in with the Google account whose subscriptions you want to follow
+6. Click **Exchange authorization code for tokens**
+7. Copy the **Refresh token** value into `.env`:
+   ```
+   FEEDMIX_YOUTUBE_REFRESH_TOKEN=...
+   ```
+
+---
+
+### Substack setup
+
+No API key needed — Substack publishes a public RSS feed for every publication.
+
+Find the base URL of each newsletter you follow (e.g. `https://simonwillison.substack.com`) and add them as a comma-separated list in `.env`:
+
 ```
+FEEDMIX_SUBSTACK_URLS=https://simonwillison.substack.com,https://stratechery.com
+```
+
+Substack is optional — omitting `FEEDMIX_SUBSTACK_URLS` shows only YouTube items.
+
+---
 
 ## Usage
 
 ```bash
-feedmix feed           # View recent videos from your subscriptions
-feedmix feed --limit 5 # Limit to 5 results
+feedmix feed             # Unified feed from all configured sources
+feedmix feed --limit 10  # Show at most 10 items
 ```
 
 Example output:
 
 ```
-[Tech Channel]  New video title here                     2h ago
-                https://www.youtube.com/watch?v=dQw4w9WgXcQ
+[Simon Willison]  Everything I built with Claude Sonnet     3h ago
+                  https://simonwillison.substack.com/p/...
 
-[Dev Talks]     Another great talk on Go performance      1d ago
-                https://www.youtube.com/watch?v=abc123xyz
+[Tech Channel]    New video title here                      5h ago
+                  https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+[Dev Talks]       Another great talk on Go performance      1d ago
+                  https://www.youtube.com/watch?v=abc123xyz
 ```
 
 ## Development
 
-### Quick Iteration (during development)
+### Quick iteration (during development)
 ```bash
 ./scripts/ci.sh      # Fast feedback: tests, lint, security (<2 min)
 ```
@@ -91,11 +134,6 @@ Releases are created automatically based on conventional commit messages:
 2. Push: `git push` (or run `./scripts/deploy.sh`)
 3. CI passes → **Release created automatically**
 4. Users get update: `go install github.com/gauthierbraillon/feedmix/cmd/feedmix@latest`
-
-**Manual release (if needed):**
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-```
 
 ## Contributing
 
