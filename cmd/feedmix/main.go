@@ -266,16 +266,18 @@ func newConfigCmd() *cobra.Command {
 				fmt.Fprint(out, "       • Gear icon → Use your own OAuth credentials → enter Client ID + Secret\n")
 				fmt.Fprint(out, "       • Select scope: https://www.googleapis.com/auth/youtube.readonly\n")
 				fmt.Fprint(out, "       • Authorize APIs → Exchange authorization code → copy Refresh token\n")
-				fmt.Fprint(out, "    4. Export in your shell (add to ~/.bashrc or ~/.zshrc):\n")
+				fmt.Fprint(out, "    4. Add to your shell config:\n")
+				fmt.Fprint(out, "       # bash\n")
 				if ytID == "" {
-					fmt.Fprint(out, "       export FEEDMIX_YOUTUBE_CLIENT_ID=<client-id>\n")
+					fmt.Fprint(out, "       echo 'export FEEDMIX_YOUTUBE_CLIENT_ID=<client-id>' >> ~/.bashrc\n")
 				}
 				if ytSecret == "" {
-					fmt.Fprint(out, "       export FEEDMIX_YOUTUBE_CLIENT_SECRET=<client-secret>\n")
+					fmt.Fprint(out, "       echo 'export FEEDMIX_YOUTUBE_CLIENT_SECRET=<client-secret>' >> ~/.bashrc\n")
 				}
 				if ytToken == "" {
-					fmt.Fprint(out, "       export FEEDMIX_YOUTUBE_REFRESH_TOKEN=<refresh-token>\n")
+					fmt.Fprint(out, "       echo 'export FEEDMIX_YOUTUBE_REFRESH_TOKEN=<refresh-token>' >> ~/.bashrc\n")
 				}
+				fmt.Fprint(out, "       # zsh: replace ~/.bashrc with ~/.zshrc\n")
 			}
 
 			substackURLs := parseSubstackURLs(os.Getenv("FEEDMIX_SUBSTACK_URLS"))
