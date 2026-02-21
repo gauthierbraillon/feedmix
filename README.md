@@ -26,13 +26,7 @@ Or download a pre-built binary from [GitHub Releases](https://github.com/gauthie
 
 ## Setup
 
-Copy the example config and fill in your credentials:
-
-```bash
-cp .env.example .env
-```
-
-Then follow the sections below for each source you want to enable.
+Set environment variables for each source below, or add them to a `.env` file for persistence.
 
 ---
 
@@ -43,10 +37,10 @@ Then follow the sections below for each source you want to enable.
 1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Click **Create credentials → OAuth client ID**
 3. Choose **Desktop app**, give it any name, click **Create**
-4. Copy your **Client ID** and **Client Secret** into `.env`:
-   ```
-   FEEDMIX_YOUTUBE_CLIENT_ID=...
-   FEEDMIX_YOUTUBE_CLIENT_SECRET=...
+4. Export your **Client ID** and **Client Secret**:
+   ```bash
+   export FEEDMIX_YOUTUBE_CLIENT_ID=<your-client-id>
+   export FEEDMIX_YOUTUBE_CLIENT_SECRET=<your-client-secret>
    ```
 
 **Step 2 — Enable the YouTube Data API**
@@ -62,9 +56,9 @@ Then follow the sections below for each source you want to enable.
 4. In the scope list on the left, find **YouTube Data API v3** and select `https://www.googleapis.com/auth/youtube.readonly`, then click **Authorize APIs**
 5. Sign in with the Google account whose subscriptions you want to follow
 6. Click **Exchange authorization code for tokens**
-7. Copy the **Refresh token** value into `.env`:
-   ```
-   FEEDMIX_YOUTUBE_REFRESH_TOKEN=...
+7. Export the **Refresh token**:
+   ```bash
+   export FEEDMIX_YOUTUBE_REFRESH_TOKEN=<your-refresh-token>
    ```
 
 ---
@@ -73,10 +67,10 @@ Then follow the sections below for each source you want to enable.
 
 No API key needed — Substack publishes a public RSS feed for every publication.
 
-Find the base URL of each newsletter you follow (e.g. `https://simonwillison.substack.com`) and add them as a comma-separated list in `.env`:
+Find the base URL of each newsletter you follow (e.g. `https://simonwillison.substack.com`) and export them as a comma-separated list:
 
-```
-FEEDMIX_SUBSTACK_URLS=https://simonwillison.substack.com,https://stratechery.com
+```bash
+export FEEDMIX_SUBSTACK_URLS=https://simonwillison.substack.com,https://stratechery.com
 ```
 
 Substack is optional — omitting `FEEDMIX_SUBSTACK_URLS` shows only YouTube items.

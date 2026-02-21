@@ -8,15 +8,19 @@ Feedmix is a CLI tool that authenticates with Google via OAuth 2.0, fetches subs
 User
  │
  ▼
-cmd/feedmix          ← CLI entry point (feed command)
+cmd/feedmix             ← CLI entry point (feed command)
  │
- ├── pkg/oauth        ← OAuth 2.0 token refresh (exchange refresh token for access token)
+ ├── pkg/oauth           ← OAuth 2.0 token refresh (exchange refresh token for access token)
  │
- ├── internal/youtube ← YouTube Data API v3 client (subscriptions, videos, search)
+ ├── internal/youtube    ← YouTube Data API v3 client (subscriptions, videos, search)
+ │
+ ├── internal/substack   ← Substack RSS client
  │
  ├── internal/aggregator ← Combines and sorts feed items
  │
- └── internal/display ← Terminal output (relative timestamps, URL formatting)
+ ├── internal/display    ← Terminal output (relative timestamps, URL formatting)
+ │
+ └── internal/browser    ← Opens URLs in the system browser
 ```
 
 ## Data Flow
@@ -25,14 +29,17 @@ cmd/feedmix          ← CLI entry point (feed command)
 
 ```
 main → read FEEDMIX_YOUTUBE_REFRESH_TOKEN from env
-     → oauth.Flow.RefreshAccessToken()  → Google token endpoint
+     → oauth.Flow.RefreshAccessToken()     → Google token endpoint
      → youtube.NewClient(accessToken)
-     → client.FetchSubscriptions()      → YouTube API /subscriptions
-     → for each channel:
-         client.FetchRecentVideos()     → YouTube API /search
+     → client.FetchSubscriptions()         → YouTube API /subscriptions
+     → for each channel (concurrent):
+         client.FetchRecentVideos()        → YouTube API /search
+     → (if FEEDMIX_SUBSTACK_URLS set)
+       for each publication URL (concurrent):
+         substack.Client.FetchPosts()      → Substack RSS feed
      → aggregator.AddItems()
-     → aggregator.GetFeed()             → sort by date, apply --limit
-     → display.FormatFeed()             → print to stdout
+     → aggregator.GetFeed()                → sort by date, apply --limit
+     → display.FormatFeed()                → print to stdout
 ```
 
 ## Package Responsibilities
@@ -42,8 +49,10 @@ main → read FEEDMIX_YOUTUBE_REFRESH_TOKEN from env
 | `cmd/feedmix` | CLI commands, flag parsing, wiring | binary |
 | `pkg/oauth` | OAuth 2.0 token refresh | public |
 | `internal/youtube` | YouTube Data API v3 client | private |
+| `internal/substack` | Substack RSS client | private |
 | `internal/aggregator` | Feed aggregation and sorting | private |
 | `internal/display` | Terminal rendering | private |
+| `internal/browser` | System browser launcher | private |
 | `internal/ciconfig` | CI pipeline self-tests | private |
 | `pkg/contracts` | YouTube API contract tests | private (test-only) |
 
@@ -64,7 +73,9 @@ main → read FEEDMIX_YOUTUBE_REFRESH_TOKEN from env
 | `FEEDMIX_YOUTUBE_CLIENT_ID` | Google OAuth client ID |
 | `FEEDMIX_YOUTUBE_CLIENT_SECRET` | Google OAuth client secret |
 | `FEEDMIX_YOUTUBE_REFRESH_TOKEN` | Google OAuth refresh token |
+| `FEEDMIX_SUBSTACK_URLS` | Comma-separated Substack publication base URLs (optional) |
 | `FEEDMIX_API_URL` | Override YouTube API base URL (used in tests) |
+| `FEEDMIX_CONFIG_DIR` | Override token storage directory (default: `~/.config/feedmix/`) |
 
 ## Testing Strategy
 

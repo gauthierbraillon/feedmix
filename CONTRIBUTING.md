@@ -9,7 +9,7 @@ go mod download
 go test ./...
 ```
 
-**Requirements**: Go 1.22+
+**Requirements**: Go 1.24+
 
 ## Workflow
 
