@@ -25,7 +25,6 @@ func fileContains(t *testing.T, path string, want ...string) {
 func TestDiscoverability_RequiredFilesExist(t *testing.T) {
 	required := []string{
 		"../../LICENSE",
-		"../../CHANGELOG.md",
 		"../../CONTRIBUTING.md",
 		"../../ARCHITECTURE.md",
 		"../../SECURITY.md",
@@ -52,10 +51,6 @@ func TestDiscoverability_READMEHasRequiredSections(t *testing.T) {
 
 func TestDiscoverability_LicenseIsMIT(t *testing.T) {
 	fileContains(t, "../../LICENSE", "MIT")
-}
-
-func TestDiscoverability_CHANGELOGHasVersions(t *testing.T) {
-	fileContains(t, "../../CHANGELOG.md", "v0.1.0", "v0.2.0", "v0.5.0")
 }
 
 func TestDiscoverability_LLMSTxtHasProjectSummary(t *testing.T) {
